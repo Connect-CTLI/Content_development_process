@@ -118,6 +118,9 @@ textarea.fallback { width: 100%; height: 120px; margin-top: 8px; font-family: va
 .rec[disabled] { border-style: solid; color: var(--ok-ink); border-color: var(--ok-ink); cursor: default }
 .el.extra { background: color-mix(in srgb, var(--lime) 12%, transparent); border-radius: 8px; padding-left: 6px; padding-right: 6px }
 .outtabs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px }
+.status { font-size: 14px; padding: 6px 0 } .status.bad { color: var(--bad-ink) }
+.manual { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px; padding: 8px 12px; margin: 8px 0 0; font-size: 14px }
+.setup input.missing { border-color: var(--red); background: var(--bad-bg) }
 @media (max-width: 640px) { .el { grid-template-columns: 26px 52px 1fr } .el .side { grid-column: 2 / -1 } }
 </style>
 <main>
@@ -164,6 +167,7 @@ textarea.fallback { width: 100%; height: 120px; margin-top: 8px; font-family: va
       <button id="copyCodes">Copy item codes</button>
       <button id="copySnip">Copy all snippets</button>
       <button id="copyTabs">Copy course page content</button>
+      <button id="showRows">Show the rows as text</button>
     </div>
     <p class="status" id="status" role="status" aria-live="polite"></p>
     <div id="fallbackWrap"></div>
@@ -546,16 +550,37 @@ function renderOut() {
   $("#preview tbody").innerHTML = r.map(({ i, cells }) => `<tr><td class="ic">${esc(i.course ? itemCode({ ...i, ref: "CP" }) : itemCode(i))}</td><td>${esc(cells[4])}</td><td>${esc(cells[5])}</td><td class="txt">${esc(cells[6].slice(0, 120))}</td><td>${esc(cells[7])}</td><td>${esc(cells[8])}</td><td>${esc(cells[10])}</td><td>${esc(cells[16])}</td><td>${esc(cells[17])}</td></tr>`).join("");
 }
 const tsvRows = arr => arr.map(r => r.map(v => { const s = String(v == null ? "" : v); return /[\t\n"]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join("\t")).join("\r\n");
+function legacyCopy(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+  let ok = false; try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+  document.body.removeChild(ta); return ok;
+}
+function showManual(text, why) {
+  $("#fallbackWrap").innerHTML = `<p class="manual">${why} The text is selected in the box below: press <b>Ctrl+C</b> (Mac: <b>Cmd+C</b>) to copy it, then paste into the sheet.</p><textarea class="fallback" id="fb" aria-label="Text to copy" readonly></textarea>`;
+  const fb = $("#fb"); fb.value = text; fb.focus(); fb.select();
+}
+function needSetup() {
+  const s = setup(); const miss = ["plo", "src"].filter(k => !s[k]);
+  ["plo", "src"].forEach(k => $("#" + k).classList.toggle("missing", miss.includes(k)));
+  if (miss.length) { $("#" + miss[0]).focus(); $("#" + miss[0]).scrollIntoView({ block: "center" }); }
+  return miss.length;
+}
 async function copy(text, label) {
-  const st = $("#status"); $("#fallbackWrap").innerHTML = "";
-  if (!current) { st.textContent = "Add a course draft first."; return; }
-  const s = setup(); if (!s.plo || !s.src) { st.textContent = "Fill in the programme code and main source first, so the item codes are right."; return; }
-  try { await navigator.clipboard.writeText(text); st.textContent = label; }
-  catch (e) {
-    $("#fallbackWrap").innerHTML = '<p class="file">Copying is blocked here. Select all the text below (Ctrl+A or Cmd+A), copy it, then paste.</p><textarea class="fallback" id="fb" aria-label="Text to copy"></textarea>';
-    const fb = $("#fb"); fb.value = text; fb.focus(); fb.select(); st.textContent = "";
+  const st = $("#status"); $("#fallbackWrap").innerHTML = ""; st.className = "status";
+  if (!current) { st.textContent = "Add a course draft first (step 1)."; st.className = "status bad"; return; }
+  if (needSetup()) { st.textContent = "Fill in the programme code and main source in step 1 first, so the item codes are right."; st.className = "status bad"; return; }
+  try {
+    if (!navigator.clipboard || !window.isSecureContext) throw new Error("no clipboard");
+    await Promise.race([navigator.clipboard.writeText(text), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 1500))]);
+    st.textContent = label; return;
+  } catch (e) {
+    if (legacyCopy(text)) { st.textContent = label + " If nothing pastes, use Show the rows as text."; return; }
+    st.textContent = ""; showManual(text, "This browser blocked the copy button.");
   }
 }
+$("#showRows").addEventListener("click", () => { if (!current) return; if (needSetup()) return; showManual(tsvRows(rcRows().map(x => x.cells)), "Rows for Resource Creation."); });
 $("#copyRC").addEventListener("click", () => { const r = rcRows(); copy(tsvRows(r.map(x => x.cells)), `Copied ${r.length} rows. Paste into Resource Creation at the first empty cell in column B.`); });
 $("#copyQ").addEventListener("click", () => {
   const s = setup(); let n = 0;
