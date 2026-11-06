@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Course Draft Sorter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="brand"><div class="in"><span>CTLI • PROGRAMME DESIGN &amp; DEVELOPMENT</span><span class="steps" aria-hidden="true"><span class="on"></span><span></span><span></span><span></span></span></div></div>
+<header class="hero"><div class="in">
+  <h1>Course Draft Sorter</h1>
+  <p>Add the course draft and the Resource Creation Sheet (T06). The sorter snippets the draft into resources, fills in the Resource Creation, Question Bank, Snippets and Design Blueprint tabs, and gives you the sheet back to download. Once the developers have chosen their elements, it makes each developer a pack of their content. Files are read in your browser and never uploaded.</p>
+</div></header>
+<main>
+  <section class="step" aria-labelledby="s1">
+    <h2 id="s1"><span class="n">1</span> Add the course draft and the sheet</h2>
+    <p class="lead">The draft must use the Course Draft template: Heading 1 for each module (starting "Module"), Heading 2 for each topic, and bold lines for activities such as "Assignment:", "Reflective post:" or "Knowledge check:".</p>
+    <div class="drops">
+      <div class="drop" id="dropDoc" tabindex="0" role="button" aria-describedby="docHelp">
+        <span class="ic2">COURSE DRAFT · .DOCX</span>
+        <strong>Drop the course draft here, or click to choose it</strong>
+        <span class="small" id="docHelp">Word, or Google Docs downloaded as Microsoft Word (.docx)</span>
+        <span class="ok" id="docName"></span>
+      </div>
+      <div class="drop" id="dropXls" tabindex="0" role="button" aria-describedby="xlsHelp">
+        <span class="ic2">RESOURCE CREATION SHEET · .XLSX</span>
+        <strong>Drop the Resource Creation Sheet (T06) here, or click to choose it</strong>
+        <span class="small" id="xlsHelp">Excel, or Google Sheets downloaded as Microsoft Excel (.xlsx)</span>
+        <span class="ok" id="xlsName"></span>
+      </div>
+    </div>
+    <input type="file" id="fileDoc" accept=".docx" hidden>
+    <input type="file" id="fileXls" accept=".xlsx" hidden>
+    <div class="row"><button id="sampleBtn">Load the example draft</button><button id="blankBtn">Start from a blank T06</button><button id="resetBtn" class="reset">Reset the sorter</button><span class="file" id="loadMsg" role="status"></span></div>
+  </section>
+
+  <section class="step" aria-labelledby="s2">
+    <h2 id="s2"><span class="n">2</span> Course set-up</h2>
+    <p class="lead">These go into every row the sorter adds. The course code makes the item codes: the programme, the type, then the main source and the source element, exactly as column A of Resource Creation builds them.</p>
+    <div class="setup">
+      <label for="ccode">Course code <input id="ccode" placeholder="e.g. LP3_Comp2" autocomplete="off" list="progs"><span class="hint">Programme_main source, e.g. LP3_Comp2</span></label>
+      <label for="cname">Course name <input id="cname" placeholder="e.g. Digital Competency 2"></label>
+      <label for="pal">Colour palette <select id="pal"></select></label>
+      <label for="writer">Writer (SME) <input id="writer" list="writers" placeholder="Name"></label>
+      <label for="dces">DCES (project lead) <input id="dces" placeholder="Name"></label>
+      <label for="due">PDD QA 1 due date <input id="due" type="date"><span class="hint">The first due date for every row</span></label>
+    </div>
+    <datalist id="writers"></datalist><datalist id="progs"></datalist>
+    <p>Item codes will look like <span class="preview-code" id="codePreview">LP3Text_Comp2.1.2</span></p>
+  </section>
+
+  <section class="step" aria-labelledby="s3">
+    <h2 id="s3"><span class="n">3</span> Check the snippets, then confirm</h2>
+    <p class="lead">Each row is one resource with its snippet of content. Untick anything that should not go into the sheet. The type is what the draft already contains (a reading page, a Moodle activity, a table, a link). Suggested elements are ideas for the developers only: they choose what to build in the Resource Creation Sheet.</p>
+    <div id="summary" class="tiles"></div>
+    <details class="box"><summary>Visual examples of the elements developers can choose</summary><div class="gallery" id="gallery"></div></details>
+    <h3>Course page tabs</h3>
+    <div id="tabs" class="tabs"></div>
+    <h3>Modules and resources</h3>
+    <div id="mods"><p class="empty">Add a course draft in step 1.</p></div>
+    <div id="dupWarn"></div>
+    <div class="row"><button class="primary" id="confirmBtn">Confirm and fill the Resource Creation Sheet</button><span class="status" id="confirmMsg" role="status" aria-live="polite"></span></div>
+  </section>
+
+  <section class="step" aria-labelledby="s4">
+    <h2 id="s4"><span class="n">4</span> Download</h2>
+    <p class="lead">Download the filled sheet and share it with the developers. They choose their elements in Resource Creation (Visual Instructional Designer, digital tools, VID and product type). The Project Plan tab fills itself as the tracker is updated: complete it and export it to PDF when the project closes.</p>
+    <ul class="done-list" id="doneList"><li>Nothing filled yet.</li></ul>
+    <div class="outtabs">
+      <button class="primary" id="dlSheet" disabled>Download the Resource Creation Sheet</button>
+      <button id="dlSnips" disabled>Download all snippets (Word)</button>
+    </div>
+    <div class="nextbox">
+      <p><b>Next course?</b> Download what you need first, then choose how to start again.</p>
+      <div class="row" style="margin-top:6px">
+        <button id="nextSame" disabled>Next course in this same sheet</button>
+        <button id="resetBtn2" class="reset">Reset everything</button>
+      </div>
+      <p class="small-note">"Next course in this same sheet" keeps the filled sheet, palette, writer and DCES, and clears the draft, course code, course name and due date. "Reset everything" empties the sorter.</p>
+    </div>
+    <div class="tablewrap"><table id="preview"><thead><tr><th>Row</th><th>Item code</th><th>Resource</th><th>Module</th><th>Description</th><th>Palette</th><th>PDD QA 1 due</th><th>Writer</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="step" aria-labelledby="s5">
+    <h2 id="s5"><span class="n">5</span> Developer packs</h2>
+    <p class="lead">When the developers have chosen their elements, add the updated sheet here. Pick a developer to download their content snippets as a Word document, with their rows from the Resource Creation Sheet.</p>
+    <div class="drop" id="dropDev" tabindex="0" role="button">
+      <span class="ic2">UPDATED RESOURCE CREATION SHEET · .XLSX</span>
+      <strong>Drop the sheet with the developers' choices here, or click to choose it</strong>
+      <span class="ok" id="devName"></span>
+    </div>
+    <input type="file" id="fileDev" accept=".xlsx" hidden>
+    <div class="row"><button id="useFilled" disabled>Use the sheet from step 4</button></div>
+    <div class="devpick">
+      <label for="devSel">Developer <select id="devSel" disabled><option>Add the sheet first</option></select></label>
+      <button class="primary" id="dlPack" disabled>Download their content pack (Word)</button>
+      <button id="dlDevSheet" disabled>Download the Resource Creation Sheet</button>
+    </div>
+    <p class="status" id="devMsg" role="status" aria-live="polite"></p>
+    <div class="tablewrap"><table id="devPreview"><thead><tr><th>Item code</th><th>Resource</th><th>Module</th><th>Digital tool</th><th>Due</th><th>Snippet</th></tr></thead><tbody></tbody></table></div>
+  </section>
+</main>
+<footer class="foot">Course Draft Sorter · CTLI Programme Design &amp; Development. Rules and settings live in <code>config.js</code>.</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="config.js"></script>
+<script src="parser.js"></script>
+<script src="workbook.js"></script>
+<script src="worddoc.js"></script>
+<script src="visuals.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
