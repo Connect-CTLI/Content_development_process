@@ -1,21 +1,107 @@
-// Course Draft Sorter: the page. Rules and column positions live in config.js.
+// PDD Course Design Hub: the page. Rules and column positions live in config.js.
 (() => {
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const S = CFG.sheet, C = S.rcCols;
+const S = CFG.sheet;
+let C = S.rcCols; // Resource Creation columns, found by heading for each sheet (see rcMap)
 const NAME = Object.fromEntries(CFG.types);
 const PAL = Object.fromEntries(CFG.palettes.map(([n, p, h]) => [n, { p, h }]));
 const TABS = ["Course Description", "Learning Objectives", "Course Structure", "Badging & Certification", "Navigation & Online Learning Tips", "References and additional reading material"];
 let model = null, items = [], sheet = null, filled = null, dev = null;
 
+// find each Resource Creation column by its heading in row 2, so older and newer sheets both work
+function rcMap(rc) {
+  const heads = []; for (let c = 1; c <= 90; c++) heads.push([colName(c), rc.text(colName(c) + S.rcHeaderRow)]);
+  const m = {}; const taken = new Set();
+  Object.entries(S.rcHeaders).forEach(([k, re]) => { const hit = heads.find(([col, h]) => h && re.test(h) && !taken.has(col)); if (hit) { m[k] = hit[0]; if (k === "vid") taken.add(hit[0]); } });
+  return Object.keys(m).length >= 6 ? m : { ...S.rcCols };
+}
+
+// ---------- programme team: units, co-ordinators and people ----------
+const TEAMS_KEY = "cds-teams";
+const copyOf = o => JSON.parse(JSON.stringify(o));
+let teams = (() => { try { const t = JSON.parse(localStorage.getItem(TEAMS_KEY)); if (t && t.units && t.people) return t; } catch (e) {} return copyOf(CFG.teams); })();
+const PEOPLE = ["writers", "developers", "pdd", "qa"];
+PEOPLE.forEach(k => { teams.people[k] = teams.people[k] || []; });
+const uniq = arr => { const seen = new Set(); return arr.map(x => String(x || "").trim()).filter(x => x && !seen.has(x.toLowerCase()) && seen.add(x.toLowerCase())); };
+function saveTeams() { try { localStorage.setItem(TEAMS_KEY, JSON.stringify(teams)); } catch (e) {} }
+function teamSelects() {
+  const u = $("#unit").value || savedSetup.unit || "", c = $("#coord").value || savedSetup.coord || "";
+  $("#unit").innerHTML = '<option value="">Choose a unit</option>' + teams.units.map(x => `<option>${esc(x.name)}</option>`).join("");
+  if (teams.units.some(x => x.name === u)) $("#unit").value = u;
+  const unit = teams.units.find(x => x.name === $("#unit").value);
+  $("#coord").innerHTML = '<option value="">' + (unit ? "Choose a co-ordinator" : "Choose a unit first") + "</option>" + (unit ? unit.coordinators.map(n => `<option>${esc(n)}</option>`).join("") : "");
+  if (unit && unit.coordinators.includes(c)) $("#coord").value = c;
+  $("#writers").innerHTML = teams.people.writers.map(p => `<option value="${esc(p)}">`).join("");
+}
+function teamEditor() {
+  $("#unitsEd").innerHTML = teams.units.map((u, i) => `<div class="unit-card"><label class="small-note" style="margin:0">Unit <input class="un" data-i="${i}" value="${esc(u.name)}" aria-label="Unit name"></label>
+    <label class="small-note" style="margin:0">Programme Co-ordinators, one per line <textarea class="uc" data-i="${i}" aria-label="Co-ordinators for ${esc(u.name)}">${esc(u.coordinators.join("\n"))}</textarea></label>
+    <button class="rm reset" data-i="${i}">Remove this unit</button></div>`).join("");
+  $("#peopleTxt").value = teams.people[$("#peopleSel").value].join("\n");
+}
+$("#unitsEd").addEventListener("input", e => {
+  const i = +e.target.dataset.i; if (isNaN(i)) return;
+  if (e.target.classList.contains("un")) teams.units[i].name = e.target.value;
+  if (e.target.classList.contains("uc")) teams.units[i].coordinators = e.target.value.split("\n");
+  $("#teamMsg").textContent = "Not saved yet";
+});
+$("#unitsEd").addEventListener("click", e => { const b = e.target.closest(".rm"); if (!b) return; teams.units.splice(+b.dataset.i, 1); teamEditor(); $("#teamMsg").textContent = "Not saved yet"; });
+$("#addUnit").addEventListener("click", () => { teams.units.push({ name: "", coordinators: [] }); teamEditor(); const n = document.querySelectorAll(".un"); n[n.length - 1].focus(); });
+$("#peopleSel").addEventListener("change", () => { $("#peopleTxt").value = teams.people[$("#peopleSel").value].join("\n"); });
+$("#peopleTxt").addEventListener("input", () => { teams.people[$("#peopleSel").value] = $("#peopleTxt").value.split("\n"); $("#teamMsg").textContent = "Not saved yet"; });
+function tidyTeams() {
+  teams.units = teams.units.map(u => ({ name: String(u.name || "").trim(), coordinators: uniq(u.coordinators) })).filter(u => u.name);
+  PEOPLE.forEach(k => { teams.people[k] = uniq(teams.people[k]); });
+}
+$("#saveTeams").addEventListener("click", () => { tidyTeams(); saveTeams(); teamEditor(); teamSelects(); $("#teamMsg").textContent = "Saved. The lists go into every sheet the Hub fills or downloads."; });
+$("#resetTeams").addEventListener("click", () => { teams = copyOf(CFG.teams); saveTeams(); teamEditor(); teamSelects(); $("#teamMsg").textContent = "Back to the starting lists."; });
+$("#copyTeams").addEventListener("click", async () => {
+  tidyTeams();
+  const txt = "teams: " + JSON.stringify({ units: teams.units, people: teams.people }, null, 2).replace(/"(\w+)":/g, "$1:") + ",";
+  const out = $("#teamsOut"); out.hidden = false; out.value = txt; out.focus(); out.select();
+  try { await navigator.clipboard.writeText(txt); $("#teamMsg").textContent = "Copied. On GitHub, open index.html, find teams: and replace that block with this text."; }
+  catch (e) { $("#teamMsg").textContent = "Press Ctrl+C to copy the selected text, then paste it over teams: in the settings on GitHub."; }
+});
+// names already in a sheet's Data tab join the lists, so nobody is lost
+async function teamsFromSheet(wb) {
+  const d = await wb.sheet(S.data); if (!d) return;
+  let added = 0;
+  Object.entries(S.dataLists).forEach(([k, col]) => { for (let r = 2; r <= 60; r++) { const v = d.text(col + r); if (v && !teams.people[k].some(x => x.toLowerCase() === v.toLowerCase())) { teams.people[k].push(v); added++; } } });
+  for (let c = colNum(S.dataUnits.firstCol); c <= colNum(S.dataUnits.lastCol); c++) {
+    const name = d.text(colName(c) + 1); if (!name) continue;
+    let u = teams.units.find(x => x.name.toLowerCase() === name.toLowerCase()); if (!u) { u = { name, coordinators: [] }; teams.units.push(u); added++; }
+    for (let r = 2; r <= S.dataUnits.lastRow; r++) { const v = d.text(colName(c) + r); if (v && !u.coordinators.includes(v)) { u.coordinators.push(v); added++; } }
+  }
+  if (added) { saveTeams(); teamEditor(); teamSelects(); }
+}
+// writes the lists into a sheet's Data tab so its dropdowns match the dashboard
+async function teamsToSheet(wb) {
+  const d = await wb.sheet(S.data); if (!d) return;
+  tidyTeams();
+  const put = (ref, v) => { if (v || d.cellEl(ref, false)) d.set(ref, v || ""); };
+  Object.entries(S.dataLists).forEach(([k, col]) => { for (let r = 2; r <= 60; r++) put(col + r, teams.people[k][r - 2]); });
+  const first = colNum(S.dataUnits.firstCol), last = colNum(S.dataUnits.lastCol);
+  for (let c = first; c <= last; c++) {
+    const u = teams.units[c - first];
+    put(colName(c) + 1, u ? u.name : "");
+    for (let r = 2; r <= S.dataUnits.lastRow; r++) put(colName(c) + r, u ? u.coordinators[r - 2] : "");
+  }
+}
+
 // ---------- set-up fields ----------
 $("#pal").innerHTML = '<option value="">Choose a palette</option>' + CFG.palettes.map(([n]) => `<option>${esc(n)}</option>`).join("");
-const SETUP = ["ccode", "cname", "pal", "writer", "dces", "due"];
-try { const s = JSON.parse(localStorage.getItem("cds-setup") || "{}"); SETUP.forEach(k => { if (s[k]) $("#" + k).value = s[k]; }); } catch (e) {}
-SETUP.forEach(k => $("#" + k).addEventListener("input", () => {
-  try { localStorage.setItem("cds-setup", JSON.stringify(Object.fromEntries(SETUP.map(x => [x, $("#" + x).value])))); } catch (e) {}
-  $("#" + k).classList.remove("missing"); codePreview(); dupCheck(); if (model) render();
-}));
+const SETUP = ["unit", "coord", "ccode", "cname", "pal", "writer", "dces", "due"];
+let savedSetup = {};
+try { savedSetup = JSON.parse(localStorage.getItem("cds-setup") || "{}"); } catch (e) {}
+teamSelects(); teamEditor();
+SETUP.forEach(k => { if (savedSetup[k] && !["unit", "coord"].includes(k)) $("#" + k).value = savedSetup[k]; });
+function storeSetup() { try { localStorage.setItem("cds-setup", JSON.stringify(Object.fromEntries(SETUP.map(x => [x, $("#" + x).value])))); } catch (e) {} }
+SETUP.forEach(k => ["input", "change"].forEach(ev => $("#" + k).addEventListener(ev, () => {
+  if (k === "unit" && ev === "change") { savedSetup.coord = ""; teamSelects(); }
+  savedSetup[k] = $("#" + k).value; storeSetup();
+  $("#" + k).classList.remove("missing"); codePreview(); dupCheck(); if (model && ev === "input") render();
+})));
 function setup() {
   const s = Object.fromEntries(SETUP.map(k => [k, $("#" + k).value.trim()]));
   const code = s.ccode.replace(/\s+/g, ""); const i = code.indexOf("_");
@@ -33,7 +119,7 @@ function gallery() {
   const { p, h } = colours();
   $("#gallery").innerHTML = VISUALS.codes.map(c => `<div class="gal">${VISUALS.svg(c, p, h, "Example of " + (NAME[c] || c))}<b>${esc(c)} · ${esc(NAME[c] || c)}</b><span>${esc(VISUALS.about(c))}</span></div>`).join("");
 }
-gallery(); $("#pal").addEventListener("change", () => { gallery(); if (model) render(); });
+gallery(); $("#pal").addEventListener("change", () => { gallery(); tplStrip(); if (model) render(); });
 
 // ---------- loading files ----------
 function wireDrop(drop, input, handler) {
@@ -44,6 +130,7 @@ function wireDrop(drop, input, handler) {
   drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) f.arrayBuffer().then(b => handler(b, f.name)); });
   input.addEventListener("change", () => { const f = input.files[0]; if (f) f.arrayBuffer().then(b => handler(b, f.name)); input.value = ""; });
 }
+wireDrop($("#dropOrig"), $("#fileOrig"), (b, n) => loadOriginal(b, n));
 wireDrop($("#dropDoc"), $("#fileDoc"), (b, n) => loadDoc(b, n));
 wireDrop($("#dropXls"), $("#fileXls"), (b, n) => loadSheet(b, n));
 wireDrop($("#dropDev"), $("#fileDev"), (b, n) => loadDev(b, n));
@@ -54,44 +141,100 @@ async function loadDoc(buf, name, isExample) {
     $("#docName").innerHTML = (isExample ? "Example: " : "✓ ") + esc(name); $("#dropDoc").classList.add("done");
     if (!$("#cname").value && model.title) $("#cname").value = model.title;
     filled = null; setDownloads(); render();
+    if (!isExample) $("#s2").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (e) { console.error(e); $("#docName").textContent = "That file could not be read as a Word document. Save it as .docx and try again."; $("#dropDoc").classList.remove("done"); }
 }
-async function loadSheet(buf, name) {
+async function loadSheet(buf, name, label) {
   try {
     const wb = await Workbook.load(buf.slice(0));
     if (!wb.has(S.rc)) throw new Error(`There is no "${S.rc}" tab in this workbook.`);
-    const rc = await wb.sheet(S.rc); const counts = {};
+    const rc = await wb.sheet(S.rc); const map = rcMap(rc); C = map; const counts = {};
     for (let r = S.rcFirstRow; r <= Math.max(S.rcLastRow, rc.lastUsedRow()); r++) {
       const k = rc.text(C.programme + r) + "|" + rc.text(C.source + r); if (k !== "|") counts[k] = (counts[k] || 0) + 1;
     }
     const list = async (sheetName, col) => { const d = await wb.sheet(sheetName); if (!d) return []; const out = []; for (let r = 2; r <= 60; r++) { const v = d.text(col + r); if (v) out.push(v); } return out; };
-    const progs = await list(S.data, S.dataProgrammes), writers = await list(S.data, S.dataWriters);
+    const progs = await list(S.data, S.dataProgrammes);
     $("#progs").innerHTML = progs.map(p => `<option value="${esc(p)}_">`).join("");
-    $("#writers").innerHTML = writers.map(p => `<option value="${esc(p)}">`).join("");
+    await teamsFromSheet(wb);
     const bp = await wb.sheet(S.blueprint); const B = S.blueprintCells;
     if (bp) {
       if (!$("#cname").value && bp.text(B.course)) $("#cname").value = bp.text(B.course);
       if (!$("#pal").value && bp.text(B.palette)) { $("#pal").value = bp.text(B.palette); gallery(); }
       if (!$("#dces").value && bp.text(B.dces)) $("#dces").value = bp.text(B.dces);
+      if (!$("#unit").value && bp.text(B.unit) && teams.units.some(u => u.name === bp.text(B.unit))) { $("#unit").value = bp.text(B.unit); teamSelects(); }
+      if (!$("#coord").value && B.coordinator && bp.text(B.coordinator)) { savedSetup.coord = bp.text(B.coordinator); teamSelects(); }
     }
     const missing = [S.qb, S.snippets, S.projectPlan, S.blueprint].filter(n => !wb.has(n));
-    sheet = { buf, name, counts, missing };
-    $("#xlsName").textContent = "✓ " + name + (missing.length ? ` (no ${missing.join(", ")} tab${missing.length > 1 ? "s" : ""})` : "");
+    sheet = { buf, name, counts, missing, map, blank: !!label };
+    $("#xlsName").textContent = "✓ " + (label || name) + (missing.length ? ` (no ${missing.join(", ")} tab${missing.length > 1 ? "s" : ""})` : "");
     $("#dropXls").classList.add("done");
-    $("#loadMsg").textContent = missing.includes(S.projectPlan) ? "This is an older T06: the sorter will add a Snippets tab. For the Project Plan tab, use the latest T06 template." : "";
+    $("#loadMsg").textContent = missing.includes(S.projectPlan) ? "This is an older T06: the Hub will add a Snippets tab. For the Project Plan tab and the duration column, use the blank template." : (!map.devTime ? "This sheet has no Duration to develop column. The blank template has it." : "");
     filled = null; setDownloads(); dupCheck(); if (model) render();
   } catch (e) { console.error(e); $("#xlsName").textContent = "That file could not be read as the Resource Creation Sheet. " + (e.message || ""); $("#dropXls").classList.remove("done"); sheet = null; }
 }
 $("#sampleBtn").addEventListener("click", sample);
 function sample() {
-  if (window.SAMPLE_B64) { const bin = atob(window.SAMPLE_B64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return loadDoc(u.buffer, "Example course draft: SMT work planning", true); }
-  fetch("examples/sample-course-draft.docx").then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(b => loadDoc(b, "Example course draft: SMT work planning", true)).catch(() => { $("#loadMsg").textContent = "The example draft is not available here."; });
+  if (window.SAMPLE_B64) { const bin = atob(window.SAMPLE_B64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return loadOriginal(u.buffer, "Example course draft: SMT work planning", true); }
+  fetch("examples/sample-course-draft.docx").then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(b => loadOriginal(b, "Example course draft: SMT work planning", true)).catch(() => { $("#loadMsg").textContent = "The example draft is not available here."; });
 }
-$("#blankBtn").addEventListener("click", () => {
-  const go = b => loadSheet(b, "T06_Resource_Creation_Sheet.xlsx");
-  if (window.BLANK_T06_B64) { const bin = atob(window.BLANK_T06_B64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return go(u.buffer); }
-  fetch("templates/T06_Resource_Creation_Sheet.xlsx").then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(go).catch(() => { $("#loadMsg").textContent = "The blank template could not be loaded here. Add your own copy of T06 instead."; });
+// the blank T06 template ships with the Hub and is loaded when the page opens
+async function blankBuf() {
+  if (window.BLANK_T06_B64) { const bin = atob(window.BLANK_T06_B64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
+  const r = await fetch("templates/T06_Resource_Creation_Sheet.xlsx"); if (!r.ok) throw new Error("no template"); return r.arrayBuffer();
+}
+async function loadBlank() {
+  try { await loadSheet(await blankBuf(), "T06_Resource_Creation_Sheet.xlsx", "Blank T06 template (preloaded)"); }
+  catch (e) { $("#loadMsg").textContent = "The blank template could not be loaded here. Add your own copy of T06 instead."; }
+}
+$("#blankBtn").addEventListener("click", loadBlank);
+$("#dlBlank").addEventListener("click", async () => {
+  try {
+    const wb = await Workbook.load(await blankBuf()); await teamsToSheet(wb);
+    const bp = await wb.sheet(S.blueprint); const s = setup(); const B = S.blueprintCells;
+    if (bp) { if (s.unit) bp.set(B.unit, s.unit); if (s.coord && B.coordinator) bp.set(B.coordinator, s.coord); if (s.dces) bp.set(B.dces, s.dces); }
+    save(await wb.blob(), "T06_Resource_Creation_Sheet.xlsx");
+  } catch (e) { $("#loadMsg").textContent = "The blank template could not be loaded here."; }
 });
+
+// ---------- learning design review ----------
+const PRINCIPLES = ["Engagement", "Representation", "Action & Expression", "Accessibility", "Moodle flow"];
+let review = null, udlFilter = "All";
+async function loadOriginal(buf, name, isExample) {
+  try {
+    $("#origName").textContent = "Reviewing…";
+    const r = await UDLReview.review(buf.slice(0)); const acc = await UDLReview.review(buf.slice(0), { accepted: true });
+    review = { name, buf: buf.slice(0), reviewed: r.file, accepted: acc.file, suggestions: r.suggestions, modules: r.modules };
+    $("#origName").textContent = (isExample ? "Example: " : "✓ ") + name; $("#dropOrig").classList.add("done");
+    ["#dlReviewed", "#dlAccepted", "#useAccepted", "#useOriginal"].forEach(id => { $(id).disabled = false; });
+    udlFilter = "All"; renderReview();
+    $("#sR").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) { console.error(e); $("#origName").textContent = "That file could not be read as a Word document. Save it as .docx and try again."; $("#dropOrig").classList.remove("done"); }
+}
+const pslug = p => p.toLowerCase().replace(/[^a-z]+/g, "-");
+function renderReview() {
+  if (!review) return;
+  const sg = review.suggestions; const count = p => sg.filter(x => x.principle === p).length;
+  $("#udlTiles").innerHTML = [["Suggestions", sg.length], ...PRINCIPLES.map(p => [p, count(p)])].map(([l, v], i) => `<div class="tile ${i ? "udl-" + pslug(l) : ""}"><b>${v}</b><span>${esc(l)}</span></div>`).join("");
+  $("#udlChips").innerHTML = ["All", ...PRINCIPLES].map(p => `<button class="chip ${p === udlFilter ? "on" : ""}" data-p="${esc(p)}" aria-pressed="${p === udlFilter}">${esc(p)}${p === "All" ? "" : " · " + count(p)}</button>`).join("");
+  const list = sg.filter(x => udlFilter === "All" || x.principle === udlFilter);
+  $("#udlList").innerHTML = list.length ? list.map(x => `<div class="udl-row">
+    <div class="udl-orig"><span class="udl-k">Original · ${esc(x.where)}</span><p>${esc(x.original || "")}</p></div>
+    <div class="udl-sugg udl-${pslug(x.principle)}"><span class="udl-k"><span class="pchip udl-${pslug(x.principle)}">${esc(x.principle)}</span> ${esc(x.how)}</span>
+      <p><b>${esc(x.title)}.</b> ${esc(x.detail)}</p>
+      ${x.insert ? `<div class="udl-ins">${x.insert.map(i => `<mark${i.style ? ' class="h"' : ""}>${esc(i.text)}</mark>`).join("<br>")}</div>` : ""}</div></div>`).join("")
+    : '<p class="empty">No suggestions for this principle.</p>';
+}
+$("#udlChips").addEventListener("click", e => { const b = e.target.closest(".chip"); if (!b) return; udlFilter = b.dataset.p; renderReview(); });
+function resetReview() {
+  review = null; $("#origName").textContent = ""; $("#dropOrig").classList.remove("done");
+  $("#udlTiles").innerHTML = ""; $("#udlChips").innerHTML = ""; $("#udlList").innerHTML = '<p class="empty">Add a course draft in step 2.</p>';
+  ["#dlReviewed", "#dlAccepted", "#useAccepted", "#useOriginal"].forEach(id => { $(id).disabled = true; });
+}
+const baseName = n => String(n || "course_draft").replace(/\.docx$/i, "").replace(/[\\/:*?"<>|]+/g, "-");
+$("#dlReviewed").addEventListener("click", () => review && save(review.reviewed, baseName(review.name) + "_learning_design_review.docx"));
+$("#dlAccepted").addEventListener("click", () => review && save(new Blob([review.accepted], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }), baseName(review.name) + "_all_suggestions.docx"));
+$("#useAccepted").addEventListener("click", () => review && loadDoc(review.accepted.slice(0), baseName(review.name) + " (every suggestion accepted)"));
+$("#useOriginal").addEventListener("click", () => review && loadDoc(review.buf.slice(0), baseName(review.name) + " (original)"));
 
 // ---------- items ----------
 function build() {
@@ -184,21 +327,23 @@ $("#confirmBtn").addEventListener("click", confirmFill);
 function say(sel, text, bad) { const el = $(sel); el.textContent = text; el.className = "status" + (bad ? " bad" : ""); }
 async function confirmFill() {
   const s = setup();
-  if (!model) return say("#confirmMsg", "Add a course draft in step 1 first.", true);
-  if (!sheet) return say("#confirmMsg", "Add the Resource Creation Sheet in step 1 first (or start from a blank T06).", true);
+  if (!model) return say("#confirmMsg", "Add the approved draft in step 4 first.", true);
+  if (!sheet) return say("#confirmMsg", "Add the Resource Creation Sheet in step 4, or click Use the blank template.", true);
   if (!s.prog || !s.src) { $("#ccode").classList.add("missing"); $("#ccode").focus(); return say("#confirmMsg", "Fill in the course code as Programme_source, for example LP3_Comp2.", true); }
   const dupes = sheet.counts[s.prog + "|" + s.src] || 0;
   if (dupes && !($("#replace") && $("#replace").checked)) return say("#confirmMsg", "This course code is already in the sheet. Tick Replace, or change the course code.", true);
   say("#confirmMsg", "Filling the sheet…");
   try {
     const wb = await Workbook.load(sheet.buf.slice(0));
-    const rc = await wb.sheet(S.rc);
+    const rc = await wb.sheet(S.rc); C = sheet.map || rcMap(rc);
     const lastRc = Math.max(S.rcLastRow, rc.lastUsedRow());
-    const valueCols = []; for (let c = 2; c < colNum(C.done); c++) valueCols.push(colName(c));
+    const valueCols = []; for (let c = colNum(C.programme); c < (C.done ? colNum(C.done) : 47); c++) valueCols.push(colName(c));
     const codeRe = new RegExp("^" + s.prog.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[^_]*_" + s.src.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\.");
     // 1. Resource Creation
     if (dupes) for (let r = S.rcFirstRow; r <= lastRc; r++) if (rc.text(C.programme + r) === s.prog && rc.text(C.source + r) === s.src) { valueCols.forEach(col => rc.set(col + r, "")); rc.setCached(C.code + r, ""); }
     const rows = rcItems(); const free = [];
+    const dataSh = await wb.sheet(S.data); const typical = {};
+    if (dataSh) for (let r = 2; r <= 60; r++) { const c = dataSh.text("B" + r), v = dataSh.get("N" + r); if (c && typeof v === "number") typical[c] = v; }
     for (let r = S.rcFirstRow; free.length < rows.length; r++) if (rc.rowEmpty(r, [C.programme, C.type, C.source, C.element, C.resource])) free.push(r);
     const preview = [];
     rows.forEach((it, k) => {
@@ -206,15 +351,19 @@ async function confirmFill() {
       const notes = [...it.flags, ...it.links.map(l => (l.label && l.label !== l.url ? l.label + ": " : "") + l.url), sg.length ? "Suggested elements (developers decide): " + sg.map(([c]) => `${c} ${NAME[c] || c}`).join(", ") : ""].filter(Boolean).join("; ");
       const vals = { [C.programme]: s.prog, [C.type]: it.code, [C.source]: s.src, [C.element]: it.ref, [C.resource]: NAME[it.code] || it.code, [C.module]: it.module,
         [C.description]: it.title.replace(/\s*\n\s*/g, " "), [C.palette]: s.pal, [C.status]: S.startStatus, [C.writer]: s.writer, [C.notes]: notes };
-      Object.entries(vals).forEach(([col, v]) => rc.set(col + r, v || ""));
-      rc.set(C.due + r, s.due || "", s.due ? { date: true } : null);
+      Object.entries(vals).forEach(([col, v]) => { if (col && col !== "undefined") rc.set(col + r, v || ""); });
+      if (C.due) rc.set(C.due + r, s.due || "", s.due ? { date: true } : null);
+      if (C.devTime && typical[it.code] != null) rc.setCached(C.devTime + r, typical[it.code]);
+      it.days = typical[it.code];
       if (rc.cellEl(C.code + r, false) && rc.cellEl(C.code + r, false).getElementsByTagNameNS(XL_NS, "f").length) rc.setCached(C.code + r, code); else rc.set(C.code + r, code);
       preview.push({ r, code, it });
     });
     // programme and writer go into the Data lists so the dropdowns accept them
     const data = await wb.sheet(S.data);
     const addTo = (col, v) => { if (!data || !v) return; let empty = 0; for (let r = 2; r <= 60; r++) { const t = data.text(col + r); if (t === v) return; if (!t && !empty) empty = r; } if (empty) data.set(col + empty, v); };
-    addTo(S.dataProgrammes, s.prog); addTo(S.dataWriters, s.writer);
+    if (s.writer && !teams.people.writers.some(x => x.toLowerCase() === s.writer.toLowerCase())) { teams.people.writers.push(s.writer); saveTeams(); teamEditor(); teamSelects(); }
+    await teamsToSheet(wb);
+    addTo(S.dataProgrammes, s.prog);
     // 2. Question Bank
     let qCount = 0;
     const qb = wb.has(S.qb) ? await wb.sheet(S.qb) : null;
@@ -249,13 +398,17 @@ async function confirmFill() {
     });
     // 4. Design Blueprint course details
     const bp = wb.has(S.blueprint) ? await wb.sheet(S.blueprint) : null; const B = S.blueprintCells;
-    if (bp) { if (s.cname) bp.set(B.course, s.cname); bp.set(B.programme, s.prog); if (s.pal) bp.set(B.palette, s.pal); if (s.dces) bp.set(B.dces, s.dces); }
+    if (bp) {
+      if (s.cname) bp.set(B.course, s.cname); bp.set(B.programme, s.prog); if (s.pal) bp.set(B.palette, s.pal); if (s.dces) bp.set(B.dces, s.dces);
+      if (s.unit) bp.set(B.unit, s.unit);
+      if (s.coord && B.coordinator && /co-?ordinator/i.test(bp.text("A" + B.coordinator.replace(/\D/g, "")))) bp.set(B.coordinator, s.coord);
+    }
     const blob = await wb.blob();
     filled = { blob, name: sheet.name, rows: preview, qCount, snCount, first: free[0], last: free[free.length - 1], setup: s, hasPlan: wb.has(S.projectPlan), over: free[free.length - 1] > S.rcLastRow };
     // keep working on the filled copy, so confirming again does not add the rows twice
     sheet = { ...sheet, buf: await blob.arrayBuffer(), counts: { ...sheet.counts, [s.prog + "|" + s.src]: rows.length } };
     dupCheck(); setDownloads(); showFilled();
-    say("#confirmMsg", `Done: ${rows.length} rows, ${qCount} questions and ${snCount} snippets added. Download the sheet in step 4.`);
+    say("#confirmMsg", `Done: ${rows.length} rows, ${qCount} questions and ${snCount} snippets added. Download the sheet in step 7.`);
     $("#s4").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (e) { console.error(e); say("#confirmMsg", "Something went wrong while filling the sheet: " + (e.message || e), true); }
 }
@@ -266,15 +419,16 @@ function showFilled() {
     `<b>Resource Creation:</b> ${f.rows.length} rows (rows ${f.first} to ${f.last}), with item codes, palette, writer, status and the PDD QA 1 due date. The developer columns are left for the developers.`,
     `<b>Question Bank:</b> ${f.qCount} question${f.qCount === 1 ? "" : "s"} from the reflections and knowledge checks.`,
     `<b>Snippets:</b> ${f.snCount} snippets of content, matched by programme, main source and source element.`,
-    `<b>Design Blueprint:</b> course name, programme, palette and DCES filled in; the resource list builds itself.`,
+    `<b>Design Blueprint:</b> course name, programme, unit, Programme Co-ordinator, palette and DCES filled in; the resource list builds itself.`,
+    `<b>Data tab:</b> the team lists, units and Programme Co-ordinators from step 1, so the sheet's dropdowns match.`,
     f.hasPlan ? `<b>Project Plan:</b> counts, the PDD QA 1 due date and progress fill themselves. Complete the rest at close-out.` : `<b>Project Plan:</b> not in this sheet. Use the latest T06 template to get it.`,
     f.over ? `<b style="color:var(--bad-ink)">Some rows are below row ${S.rcLastRow}, where the dropdowns stop. Extend the dropdowns in Excel if you need them.</b>` : ""
   ].filter(Boolean).map(x => `<li>${x}</li>`).join("");
-  $("#preview tbody").innerHTML = f.rows.map(({ r, code, it }) => `<tr><td>${r}</td><td class="ic">${esc(code)}</td><td>${esc(NAME[it.code] || it.code)}</td><td>${esc(it.module)}</td><td class="txt">${esc(it.title.slice(0, 140))}</td><td>${esc(s.pal)}</td><td>${esc(fmtDate(s.due))}</td><td>${esc(s.writer)}</td></tr>`).join("");
+  $("#preview tbody").innerHTML = f.rows.map(({ r, code, it }) => `<tr><td>${r}</td><td class="ic">${esc(code)}</td><td>${esc(NAME[it.code] || it.code)}</td><td>${esc(it.module)}</td><td class="txt">${esc(it.title.slice(0, 140))}</td><td>${it.days != null ? esc(fmtDur(it.days)) : ""}</td><td>${esc(s.pal)}</td><td>${esc(fmtDate(s.due))}</td><td>${esc(s.writer)}</td></tr>`).join("");
 }
 function setDownloads() {
   $("#dlSheet").disabled = !filled; $("#dlSnips").disabled = !filled; $("#useFilled").disabled = !filled; $("#nextSame").disabled = !filled;
-  if (!filled) { $("#doneList").innerHTML = "<li>Nothing filled yet. Confirm in step 3.</li>"; $("#preview tbody").innerHTML = ""; }
+  if (!filled) { $("#doneList").innerHTML = "<li>Nothing filled yet. Confirm in step 6.</li>"; $("#preview tbody").innerHTML = ""; }
 }
 
 // ---------- downloads ----------
@@ -311,15 +465,18 @@ function snippetBlock(d, sn, level = 2) {
 
 // ---------- developer packs ----------
 $("#useFilled").addEventListener("click", async () => filled && loadDev(await filled.blob.arrayBuffer(), filled.name));
+const splitNames = v => String(v || "").split(/\s*[;,\/&]\s*|\s+and\s+/).map(x => x.trim()).filter(Boolean);
 async function loadDev(buf, name) {
   try {
     const wb = await Workbook.load(buf.slice(0)); if (!wb.has(S.rc)) throw new Error(`There is no "${S.rc}" tab.`);
-    const rc = await wb.sheet(S.rc); const rows = [];
+    const rc = await wb.sheet(S.rc); const M = rcMap(rc); const rows = [];
     for (let r = S.rcFirstRow; r <= Math.max(S.rcLastRow, rc.lastUsedRow()); r++) {
-      const g = k => rc.get(C[k] + r); const t = k => rc.text(C[k] + r);
+      const g = k => M[k] ? rc.get(M[k] + r) : ""; const t = k => M[k] ? rc.text(M[k] + r) : "";
       if (!t("programme")) continue;
+      const days = g("devTime");
       rows.push({ r, prog: t("programme"), type: t("type"), src: t("source"), el: t("element"), resource: t("resource"), module: t("module"), desc: t("description"),
-        pal: t("palette"), due: g("due"), status: t("status"), notes: t("notes"), vid: t("vid"), tools: t("tools"), vid2: t("vid2"), product: t("product") });
+        days: typeof days === "number" ? days : (parseFloat(days) || null), pal: t("palette"), due: g("due"), status: t("status"), notes: t("notes"),
+        vid: t("vid"), tools: t("tools"), vid2: t("vid2"), product: t("product") });
     }
     const snips = {};
     if (wb.has(S.snippets)) {
@@ -329,49 +486,76 @@ async function loadDev(buf, name) {
         (snips[key] = snips[key] || []).push({ title: sn.text("H" + r), module: sn.text("F" + r), topic: sn.text("G" + r), text: sn.text("I" + r), links: sn.text("J" + r).split("\n").filter(Boolean), check: sn.text("K" + r).split("\n").filter(Boolean) });
       }
     }
-    const bp = wb.has(S.blueprint) ? await wb.sheet(S.blueprint) : null;
-    const names = new Set(); rows.forEach(x => [x.vid, x.vid2].forEach(n => n && n.split(/\s*[;,\/&]\s*|\s+and\s+/).filter(Boolean).forEach(v => names.add(v))));
-    dev = { buf, name, rows, snips, course: bp ? bp.text(S.blueprintCells.course) : "", hasSnips: wb.has(S.snippets) };
+    const bp = wb.has(S.blueprint) ? await wb.sheet(S.blueprint) : null; const B = S.blueprintCells;
+    const info = bp ? { course: bp.text(B.course), unit: bp.text(B.unit), dces: bp.text(B.dces), coord: B.coordinator ? bp.text(B.coordinator) : "" } : {};
+    const names = new Set(); rows.forEach(x => [x.vid, x.vid2].forEach(v => splitNames(v).forEach(n => names.add(n))));
+    dev = { buf, name, rows, snips, info, map: M, hasSnips: wb.has(S.snippets) };
     const list = [...names].sort();
     $("#devSel").innerHTML = list.map(n => `<option>${esc(n)}</option>`).join("") + '<option value="__none">Not assigned yet</option><option value="__all">Everyone (all rows)</option>';
-    $("#devSel").disabled = false; $("#dlPack").disabled = false; $("#dlDevSheet").disabled = false;
+    $("#devSel").disabled = false; $("#dlPack").disabled = false; $("#dlDevSheet").disabled = false; $("#dlTs").disabled = false;
     $("#devName").textContent = "✓ " + name; $("#dropDev").classList.add("done");
-    say("#devMsg", list.length ? `${list.length} developer${list.length > 1 ? "s" : ""} found in the sheet.` : "No developer names yet in the Visual Instructional Designer or VID columns. Ask the developers to choose their elements first.", !list.length);
-    if (!dev.hasSnips) say("#devMsg", "This sheet has no Snippets tab, so the packs will have no content. Fill it with the sorter first (step 3).", true);
-    devPreview();
+    say("#devMsg", list.length ? `${list.length} developer${list.length > 1 ? "s" : ""} found in the sheet.` : "No developer names yet in the Visual Instructional Designer columns. Ask the developers to choose their elements first.", !list.length);
+    if (!dev.hasSnips) say("#devMsg", "This sheet has no Snippets tab, so the packs will have no content. Fill it with the Hub first (step 6).", true);
+    devPreview(); if (tsList.length) renderTs();
   } catch (e) { console.error(e); $("#devName").textContent = "That file could not be read as the Resource Creation Sheet."; }
 }
 function devRows() {
   const who = $("#devSel").value;
-  return dev.rows.filter(x => who === "__all" ? true : who === "__none" ? !x.vid && !x.vid2 : [x.vid, x.vid2].some(n => n && n.split(/\s*[;,\/&]\s*|\s+and\s+/).includes(who)));
+  const rows = dev.rows.filter(x => who === "__all" ? true : who === "__none" ? !x.vid && !x.vid2 : [x.vid, x.vid2].some(v => splitNames(v).includes(who)));
+  const key = x => typeof x.due === "number" ? x.due : 1e9;
+  return rows.sort((a, b) => key(a) - key(b) || a.r - b.r);
 }
 const rowCode = x => itemCode(x.prog, x.type, x.src, x.el);
 const snipsFor = x => dev.snips[[x.prog, x.src, x.el].join("|")] || [];
+// durations are stored as Excel time values (fractions of a day) and shown as hours:minutes
+const fmtDur = v => { if (v == null || v === "" || isNaN(v)) return "Not set"; const m = Math.round(v * 24 * 60); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`; };
+const fmtDays = fmtDur;
 function devPreview() {
   if (!dev) return; const rows = devRows();
-  $("#devPreview tbody").innerHTML = rows.map(x => `<tr><td class="ic">${esc(rowCode(x))}</td><td>${esc(x.resource)}</td><td>${esc(x.module)}</td><td>${esc([x.tools, x.product].filter(Boolean).join(", "))}</td><td>${esc(fmtDate(x.due))}</td><td>${snipsFor(x).length ? "✓" : "None found"}</td></tr>`).join("") || '<tr><td colspan="6">No rows for this developer.</td></tr>';
+  $("#devPreview tbody").innerHTML = rows.map(x => `<tr><td class="ic">${esc(rowCode(x))}</td><td>${esc(x.resource)}</td><td>${esc(x.module)}</td><td>${esc([x.tools, x.product].filter(Boolean).join(", "))}</td><td>${x.days == null ? "" : esc(fmtDur(x.days))}</td><td>${esc(fmtDate(x.due))}</td><td>${snipsFor(x).length ? "✓" : "None found"}</td></tr>`).join("") || '<tr><td colspan="7">No rows for this developer.</td></tr>';
 }
 $("#devSel").addEventListener("change", devPreview);
+function whoLabel() { const who = $("#devSel").value; return who === "__all" ? "All developers" : who === "__none" ? "Not assigned yet" : who; }
 $("#dlPack").addEventListener("click", async () => {
-  if (!dev) return; const rows = devRows(); const who = $("#devSel").value;
-  const label = who === "__all" ? "All developers" : who === "__none" ? "Not assigned yet" : who;
-  const d = new WordDoc.Doc();
-  d.h(1, `Content pack: ${label}`);
-  if (dev.course) d.label("Course", dev.course);
+  if (!dev) return; const rows = devRows(); const label = whoLabel(); const person = !$("#devSel").value.startsWith("__");
+  const first = person ? label.split(/\s+/)[0] : ""; const I = dev.info || {};
   const pals = [...new Set(rows.map(x => x.pal).filter(Boolean))];
-  d.label("Colour palette", pals.map(n => PAL[n] ? `${n} (primary ${PAL[n].p}, highlight ${PAL[n].h})` : n).join("; "));
-  d.label("Elements", String(rows.length));
-  d.p("Build the elements assigned to you in the Resource Creation Sheet. Item codes match column A of the sheet. Update the sheet as you work: date received back, product link and status.", { italic: true, color: "55607E" });
-  d.table(["Item code", "Resource", "Module", "Tool / product", "Due"], rows.map(x => [rowCode(x), x.resource, x.module, [x.tools, x.product].filter(Boolean).join(", "), fmtDate(x.due)]), [2300, 1700, 2600, 1700, 1300]);
+  const tools = [...new Set(rows.flatMap(x => [x.tools, x.product]).filter(Boolean))];
+  const dues = rows.map(x => x.due).filter(v => typeof v === "number").sort((a, b) => a - b);
+  const known = rows.filter(x => x.days != null); const total = known.reduce((a, x) => a + x.days, 0);
+  const d = new WordDoc.Doc();
+  d.h(1, person ? `Content pack for ${label}` : `Content pack: ${label}`);
+  if (I.course) d.p(I.course, { bold: true, color: "007DBA", size: 13 });
+  if (person) d.p(`Hi ${first}, these are the ${rows.length} element${rows.length === 1 ? "" : "s"} you chose to build${I.course ? " for " + I.course : ""}. Everything you need is in this pack: your due dates, the palette, a checklist for each element and the content to use from the course draft.`);
+  d.h(2, person ? "Your work at a glance" : "At a glance");
+  d.table(null, [
+    ["Elements", String(rows.length)],
+    ["Duration to develop", known.length ? `${fmtDur(total)} (hh:mm)${known.length < rows.length ? ` (${rows.length - known.length} not set yet)` : ""}` : "Not set yet: add it in the Duration to develop column"],
+    ["First due date", dues.length ? fmtDate(dues[0]) : "Not set"], ["Last due date", dues.length ? fmtDate(dues[dues.length - 1]) : "Not set"],
+    ["Digital tools", tools.join(", ") || "Not set"],
+    ["Colour palette", pals.map(n => PAL[n] ? `${n} (primary ${PAL[n].p}, highlight ${PAL[n].h})` : n).join("; ") || "Not set"],
+    ["Unit", I.unit || "—"], ["Programme Co-ordinator", I.coord || "—"], ["DCES (project lead)", I.dces || "—"]
+  ].map(([a, b]) => [a, b]), [3000, 6600]);
+  d.h(2, person ? "Your elements, by due date" : "Elements, by due date");
+  d.table(["Item code", "Resource", "Module", "Tool", "Hours", "Due"], rows.map(x => [rowCode(x), x.resource, x.module, [x.tools, x.product].filter(Boolean).join(", "), x.days == null ? "—" : fmtDur(x.days), fmtDate(x.due)]), [2200, 1600, 2300, 1500, 700, 1300]);
+  d.h(2, "When you finish an element");
+  ["Run the checklist for that element below.", "Add your link in the Resource Creation Sheet (VD link or Product link) and the date received back.", "Set the element to Submitted for QA by its due date. PDD QA checks it against the QA criteria and the design standards.", `Questions about the content go to ${I.coord || "the Programme Co-ordinator"}; questions about design, dates or the sheet go to ${I.dces || "the DCES"}.`].forEach(t => d.bullet(t));
   rows.forEach(x => {
+    d.pageBreak();
     d.h(2, `${rowCode(x)} · ${x.resource}`);
-    d.label("Module", x.module); d.label("Description", x.desc); d.label("Digital tool", x.tools); if (x.product) d.label("Product type", x.product);
-    d.label("Due date", fmtDate(x.due)); d.label("Status", x.status); if (x.notes) d.label("Notes", x.notes);
+    d.label("Module", x.module); d.label("Description", x.desc); d.label("Digital tool", [x.tools, x.product].filter(Boolean).join(", ") || "—");
+    d.label("Duration to develop", fmtDays(x.days)); d.label("Due date", fmtDate(x.due) || "—"); d.label("Status", x.status || "—"); if (x.notes) d.label("Notes from PDD", x.notes);
+    d.p("Your checklist", { bold: true, color: "007DBA" });
+    [`Built in ${x.tools || x.product || "the assigned tool"}${x.pal ? `, from the ${x.pal} Canva master template only` : ""}`,
+     "Content matches the snippet below; nothing new is added to legal or policy wording",
+     "Text contrast at least 4.5:1, alt text on images, captions on any video or audio",
+     "Works on desktop and on a phone; every link opens",
+     `Link added to the Resource Creation Sheet and submitted for QA${typeof x.due === "number" ? " by " + fmtDate(x.due) : ""}`].forEach(t => d.p("☐  " + t, { after: 40 }));
     const sn = snipsFor(x);
-    if (!sn.length) d.p("No snippet found for this element in the Snippets tab.", { italic: true, color: "A1271B" });
+    d.p("Content from the course draft", { bold: true, color: "007DBA" });
+    if (!sn.length) d.p("No snippet found for this element in the Snippets tab. Ask the DCES for the content.", { italic: true, color: "A1271B" });
     sn.forEach(s => {
       if (sn.length > 1) d.h(3, s.title);
-      d.p("Content", { bold: true, color: "007DBA" });
       if (s.text) d.lines(s.text); else d.p("[To write]", { italic: true });
       if (s.links.length) { d.p("Links in the draft", { bold: true, color: "007DBA" }); s.links.forEach(l => d.bullet(l)); }
       if (s.check.length) { d.p("To check", { bold: true, color: "A1271B" }); s.check.forEach(l => d.bullet(l)); }
@@ -379,7 +563,205 @@ $("#dlPack").addEventListener("click", async () => {
   });
   save(await d.blob("Content pack " + label), `Content_pack_${safe(label).replace(/\s+/g, "_")}.docx`);
 });
-$("#dlDevSheet").addEventListener("click", () => dev && save(new Blob([dev.buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), dev.name));
+// their own copy of the sheet: every other developer's rows are hidden (Excel: Home → Format → Unhide rows to see them again)
+$("#dlDevSheet").addEventListener("click", async () => {
+  if (!dev) return;
+  const label = whoLabel(); const mine = new Set(devRows().map(x => x.r));
+  const wb = await Workbook.load(dev.buf.slice(0)); const rc = await wb.sheet(S.rc);
+  if ($("#devSel").value !== "__all") dev.rows.forEach(x => { if (!mine.has(x.r)) { const el = rc.rows.get(x.r); if (el) { el.setAttribute("hidden", "1"); rc.dirty = true; } } });
+  save(await wb.blob(), `T06_${safe(label).replace(/\s+/g, "_")}.xlsx`);
+});
+
+// ---------- timesheets: a T08 for each developer (step 8) ----------
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+$("#tsMonth").value = new Date().toISOString().slice(0, 7);
+async function t08Buf() {
+  if (window.BLANK_T08_B64) { const bin = atob(window.BLANK_T08_B64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
+  const r = await fetch("templates/T08_Developer_Timesheet.xlsx"); if (!r.ok) throw new Error("no timesheet template"); return r.arrayBuffer();
+}
+$("#dlTs").addEventListener("click", async () => {
+  if (!dev) return;
+  try {
+    const rows = devRows(); const label = whoLabel(); const person = !$("#devSel").value.startsWith("__"); const I = dev.info || {};
+    const [y, m] = ($("#tsMonth").value || new Date().toISOString().slice(0, 7)).split("-").map(Number);
+    const plos = uniq([I.course, ...rows.map(x => x.prog)]);
+    const wb = await Workbook.load(await t08Buf());
+    await Timesheets.fill(wb, { name: person ? label : "", month: MONTH_NAMES[m - 1], year: y, course: [I.unit, I.course].filter(Boolean).join(" · "),
+      codes: rows.map(rowCode), plos,
+      elements: rows.map(x => ({ code: rowCode(x), resource: x.resource, module: x.module, tool: [x.tools, x.product].filter(Boolean).join(", "), due: x.due, planned: x.days, status: x.status })) });
+    save(await wb.blob(), `${safe(person ? label : "Developer")}_Content_Developer_Timesheet_${MONTH_NAMES[m - 1].slice(0, 3)} ${y}.xlsx`);
+    say("#devMsg", `Timesheet ready for ${label}: ${rows.length} element${rows.length === 1 ? "" : "s"} in the item code list.`);
+  } catch (e) { console.error(e); say("#devMsg", "The timesheet could not be made: " + (e.message || e), true); }
+});
+
+// ---------- palette templates (step 5) ----------
+function tplStrip() {
+  const name = $("#pal").value || CFG.palettes[0][0]; const code = name.split(/\s+/)[0]; const { p, h } = colours();
+  $("#tplSw").innerHTML = `<span class="swatch" style="background:${p}" title="Primary ${p}"></span><span class="swatch" style="background:${h}" title="Highlight ${h}"></span> <span class="small-note">${esc(name)}</span>`;
+  $("#tplStrip").innerHTML = (CFG.templateKinds || []).map(([f, kind]) => {
+    const file = `${f}_${code}`; const src = (window.TPL_THUMBS && window.TPL_THUMBS[file]) || `assets/templates/${file}.jpg`;
+    return `<button type="button" class="tpl" data-src="${esc(src)}" data-label="${esc(kind)} · ${esc(name)} · CTLI_${esc(file)}"><img src="${esc(src)}" alt="${esc(kind)} template in the ${esc(name)} palette" loading="lazy"><b>${esc(kind)}</b><span>CTLI_${esc(file)}</span></button>`;
+  }).join("");
+}
+$("#tplStrip").addEventListener("click", e => {
+  const b = e.target.closest(".tpl"); if (!b) return; const dlg = $("#tplBig");
+  dlg.querySelector("img").src = b.dataset.src; dlg.querySelector("img").alt = b.dataset.label; dlg.querySelector("p").textContent = b.dataset.label;
+  if (dlg.showModal) dlg.showModal();
+});
+$("#tplClose").addEventListener("click", () => $("#tplBig").close());
+$("#tplBig").addEventListener("click", e => { if (e.target === $("#tplBig")) $("#tplBig").close(); });
+tplStrip();
+
+// ---------- timesheets and claims (step 9) ----------
+let tsList = [], tsSheet = null;
+const hm = Timesheets.hm;
+function wireMany(drop, input, handler) {
+  drop.addEventListener("click", () => input.click());
+  drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); handler([...e.dataTransfer.files]); });
+  input.addEventListener("change", () => { handler([...input.files]); input.value = ""; });
+}
+wireMany($("#dropTs"), $("#fileTs"), loadTimesheets);
+wireDrop($("#dropTsXls"), $("#fileTsXls"), async (b, n) => {
+  try { const wb = await Workbook.load(b.slice(0)); if (!wb.has(S.rc)) throw 0; tsSheet = { buf: b, name: n }; $("#tsXlsName").textContent = "✓ " + n; $("#dropTsXls").classList.add("done"); await renderTs(); }
+  catch (e) { $("#tsXlsName").textContent = "That file is not a Resource Creation Sheet."; $("#dropTsXls").classList.remove("done"); }
+});
+async function loadTimesheets(files) {
+  const bad = [];
+  for (const f of files.filter(f => /\.xlsx$/i.test(f.name))) {
+    try {
+      const wb = await Workbook.load(await f.arrayBuffer()); const t = await Timesheets.read(wb, f.name);
+      if (!t.name) t.name = f.name.split("_")[0].replace(/\.xlsx$/i, "").trim();
+      tsList = tsList.filter(x => x.file !== f.name).concat(t);
+    } catch (e) { console.error(e); bad.push(`${f.name}: ${e.message || "could not be read"}`); }
+  }
+  if (files.some(f => !/\.xlsx$/i.test(f.name))) bad.push("Only .xlsx files can be read. In Google Sheets: File → Download → Microsoft Excel (.xlsx).");
+  $("#tsNames").textContent = tsList.length ? "✓ " + tsList.map(t => t.file).join(", ") : "";
+  $("#dropTs").classList.toggle("done", tsList.length > 0);
+  say("#tsMsg", bad.join(" "), bad.length > 0);
+  await renderTs();
+}
+// the Resource Creation Sheet used for planned time and logging: the one dropped here, else step 8, else step 7
+async function tsBase() {
+  if (tsSheet) return tsSheet;
+  if (dev) return { buf: dev.buf, name: dev.name };
+  if (filled) return { buf: await filled.blob.arrayBuffer(), name: filled.name };
+  return null;
+}
+async function rcIndex() {
+  const base = await tsBase(); if (!base) return null;
+  const wb = await Workbook.load(base.buf.slice(0)); const rc = await wb.sheet(S.rc); const M = rcMap(rc); const idx = new Map();
+  for (let r = S.rcFirstRow; r <= Math.max(S.rcLastRow, rc.lastUsedRow()); r++) {
+    const t = k => M[k] ? rc.text(M[k] + r) : ""; if (!t("programme")) continue;
+    const code = itemCode(t("programme"), t("type"), t("source"), t("element")); const d = M.devTime ? rc.get(M.devTime + r) : "";
+    idx.set(code, { r, resource: t("resource"), planned: typeof d === "number" ? d * 1440 : null });
+  }
+  return idx;
+}
+const period = () => [Timesheets.date($("#claimFrom").value), Timesheets.date($("#claimTo").value)];
+["#claimFrom", "#claimTo"].forEach(s => $(s).addEventListener("change", renderTs));
+async function renderTs() {
+  const on = tsList.length > 0; ["#dlClaim", "#tsClear"].forEach(s => $(s).disabled = !on);
+  if (!on) { $("#tsOut").innerHTML = '<p class="empty">No timesheets added yet.</p>'; $("#dlTimeLog").disabled = true; return; }
+  const idx = await rcIndex().catch(() => null); const [from, to] = period();
+  $("#dlTimeLog").disabled = !idx;
+  if (!idx) say("#tsMsg", "Add the Resource Creation Sheet (here, or in step 8) to log the time against each element.");
+  $("#tsOut").innerHTML = tsList.map((t, k) => {
+    const lines = Timesheets.claimLines(t.entries, from, to); const total = lines.reduce((a, l) => a + l.minutes, 0);
+    const out = Timesheets.outside(t.entries, from, to); const warns = [...t.warnings];
+    if (out.length) warns.push(`${out.length} entr${out.length === 1 ? "y is" : "ies are"} outside the claim period and left out of the claim lines.`);
+    const codes = new Map(); t.entries.forEach(x => { if (x.code) codes.set(x.code, (codes.get(x.code) || 0) + x.minutes); });
+    if (idx) [...codes.keys()].filter(c => !idx.has(c)).forEach(c => warns.push(`Item code ${c} is not in the Resource Creation Sheet.`));
+    const elRows = [...codes.entries()].map(([c, mins]) => { const e = idx && idx.get(c); const over = e && e.planned != null && mins > e.planned;
+      return `<tr><td class="ic">${esc(c)}</td><td>${esc(e ? e.resource : "Not in the sheet")}</td><td>${e && e.planned != null ? hm(e.planned) : "—"}</td><td class="${over ? "over" : ""}">${hm(mins)}${over ? " (over the plan)" : ""}</td></tr>`; }).join("");
+    return `<div class="tscard"><h3>${esc(t.name || "Name not found")}</h3>
+      <div class="meta">${esc(t.month || "Month not found")} · ${t.entries.length} entr${t.entries.length === 1 ? "y" : "ies"} · ${esc(t.file)} · <b>Claimable: ${hm(total)} (${total} minutes, ${(total / 60).toFixed(2)} hours)</b></div>
+      <div class="tablewrap"><table><thead><tr><th>Nr.</th><th>Support Category</th><th>Start Date</th><th>End Date</th><th>Total Minutes</th><th>Hours</th><th>Task description summary</th></tr></thead><tbody>
+      ${lines.map(l => `<tr><td>${l.nr}</td><td class="copy" data-v="${esc(l.cat)}">${esc(l.cat)}${l.known ? "" : " ⚠"}</td><td class="copy" data-v="${Timesheets.iso(l.start)}">${esc(Timesheets.nice(l.start))}</td><td class="copy" data-v="${Timesheets.iso(l.end)}">${esc(Timesheets.nice(l.end))}</td><td class="copy" data-v="${l.minutes}">${l.minutes}</td><td>${hm(l.minutes)}</td><td class="copy" data-v="${esc(l.task)}">${esc(l.task)}</td></tr>`).join("") || '<tr><td colspan="7">No claimable time in this period.</td></tr>'}
+      </tbody></table></div>
+      <div class="row"><button data-copy="${k}">Copy the claim lines</button><span class="small-note">Click any cell to copy just that value. Paste into the PDD Support Claim, Claim Form, from row 24.</span></div>
+      ${elRows ? `<details class="box"><summary>Time per element (planned vs logged)</summary><div class="tablewrap"><table><thead><tr><th>Item code</th><th>Resource</th><th>Planned</th><th>Logged</th></tr></thead><tbody>${elRows}</tbody></table></div></details>` : ""}
+      ${warns.length ? `<div class="warns"><b>Check before claiming</b><ul>${warns.slice(0, 25).map(w => `<li>${esc(w)}</li>`).join("")}${warns.length > 25 ? `<li>and ${warns.length - 25} more</li>` : ""}</ul></div>` : ""}
+    </div>`;
+  }).join("");
+}
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return true; }
+  catch (e) { const a = document.createElement("textarea"); a.value = t; document.body.appendChild(a); a.select(); let ok = false; try { ok = document.execCommand("copy"); } catch (x) {} a.remove(); return ok; }
+}
+$("#tsOut").addEventListener("click", async e => {
+  const cell = e.target.closest("td.copy"); const btn = e.target.closest("button[data-copy]");
+  if (cell) { const ok = await copyText(cell.dataset.v); say("#tsMsg", ok ? `Copied: ${cell.dataset.v}` : "Copy is blocked in this browser.", !ok); }
+  if (btn) {
+    const t = tsList[+btn.dataset.copy]; const [from, to] = period();
+    const tsv = Timesheets.claimLines(t.entries, from, to).map(l => [l.nr, l.cat, Timesheets.iso(l.start), Timesheets.iso(l.end), l.minutes, l.task].join("\t")).join("\n");
+    const ok = await copyText(tsv); say("#tsMsg", ok ? `Claim lines for ${t.name} copied (Nr, Support Category, Start Date, End Date, Total Minutes, Task description).` : "Copy is blocked in this browser.", !ok);
+  }
+});
+$("#tsClear").addEventListener("click", () => { tsList = []; $("#tsNames").textContent = ""; $("#dropTs").classList.remove("done"); say("#tsMsg", ""); renderTs(); });
+
+// writes every entry into the Time Log tab; a timesheet added again replaces its earlier rows (same developer and month)
+$("#dlTimeLog").addEventListener("click", async () => {
+  const base = await tsBase(); if (!base || !tsList.length) return;
+  try {
+    const wb = await Workbook.load(base.buf.slice(0)); const L0 = S.timeLogFirstRow || 5, L1 = S.timeLogLastRow || 1504;
+    let tl = wb.has(S.timeLog) ? await wb.sheet(S.timeLog) : null; const plain = !tl;
+    if (!tl) tl = await wb.addSheet(S.timeLog, ["Developer", "Month", "Date", "PLO name", "Activity category", "Item code", "Item description", "Start time", "End time", "Duration (hh:mm)", "Minutes", "From timesheet"], [20, 14, 12, 30, 30, 22, 22, 10, 10, 12, 9, 34]);
+    const COLS = "ABCDEFGHIJKL".split("");
+    const replace = new Set(tsList.map(t => (t.name + "|" + t.month).toLowerCase()));
+    const kept = []; let prevLast = L0 - 1;
+    for (let r = L0; r <= Math.min(L1, tl.lastUsedRow()); r++) {
+      const v = COLS.map(c => tl.get(c + r)); if (!v[0] && !v[10]) continue; prevLast = r;
+      if (replace.has((String(v[0]) + "|" + String(v[1])).toLowerCase())) continue; kept.push(v);
+    }
+    const fresh = tsList.flatMap(t => t.entries.map(x => [t.name, t.month, x.date == null ? "" : x.date, x.plo, x.cat, x.code, x.desc, x.start == null ? "" : x.start, x.end == null ? "" : x.end, x.minutes / 1440, x.minutes, t.file]));
+    const all = kept.concat(fresh).slice(0, L1 - L0 + 1);
+    const last = Math.max(prevLast, L0 + all.length - 1);
+    for (let i = 0, r = L0; r <= Math.min(last, L1); i++, r++) {
+      const v = all[i];
+      COLS.forEach((c, k) => {
+        let val = v ? v[k] : "";
+        if (plain && v) { if (k === 2 && typeof val === "number") val = Timesheets.iso(val); if ((k === 7 || k === 8 || k === 9) && typeof val === "number") val = hm(val * 1440); }
+        if (k === 9 && !plain) { tl.setCached(c + r, v && typeof val === "number" ? val : ""); return; }
+        tl.set(c + r, val === undefined ? "" : val);
+      });
+    }
+    // Resource Creation: show the time logged per element straight away (the formulas recalculate when the file opens)
+    const rc = await wb.sheet(S.rc); const M = rcMap(rc); const byCode = new Map();
+    all.forEach(v => { if (v[5]) byCode.set(String(v[5]), (byCode.get(String(v[5])) || 0) + (+v[10] || 0)); });
+    if (M.logged) for (let r = S.rcFirstRow; r <= Math.max(S.rcLastRow, rc.lastUsedRow()); r++) {
+      const t = k => M[k] ? rc.text(M[k] + r) : ""; if (!t("programme")) continue;
+      const mins = byCode.get(itemCode(t("programme"), t("type"), t("source"), t("element"))); rc.setCached(M.logged + r, mins ? mins / 1440 : "");
+    }
+    save(await wb.blob(), base.name.replace(/\.xlsx$/i, "") + ".xlsx");
+    say("#tsMsg", `${fresh.length} time entr${fresh.length === 1 ? "y" : "ies"} logged in the ${S.timeLog} tab${kept.length ? ` (with ${kept.length} kept from earlier timesheets)` : ""}.` + (M.logged ? " Resource Creation shows the time logged for each element." : " This sheet has no Time logged column: use the newest blank T06 for that."));
+  } catch (e) { console.error(e); say("#tsMsg", "The sheet could not be updated: " + (e.message || e), true); }
+});
+
+// a claim summary per developer, to check and file with the PDD Support Claim
+$("#dlClaim").addEventListener("click", async () => {
+  if (!tsList.length) return; const [from, to] = period(); const d = new WordDoc.Doc();
+  tsList.forEach((t, k) => {
+    if (k) d.pageBreak();
+    const lines = Timesheets.claimLines(t.entries, from, to); const total = lines.reduce((a, l) => a + l.minutes, 0);
+    d.h(1, `Claim summary: ${t.name || "name not found"}`);
+    d.p(`${t.month || ""}${from != null || to != null ? ` · claim period ${Timesheets.nice(from) || "start"} to ${Timesheets.nice(to) || "end"}` : ""}`, { bold: true, color: "007DBA", size: 13 });
+    d.p("These lines go into the PDD Support Claim (Claim Form, from row 24). The claim sheet works out the payment from the claimant's rate.");
+    d.table(["Nr.", "Support Category", "Start Date", "End Date", "Total Minutes", "Task description summary"],
+      lines.map(l => [String(l.nr), l.cat, Timesheets.nice(l.start), Timesheets.nice(l.end), String(l.minutes), l.task]), [600, 2900, 1300, 1300, 1000, 2500]);
+    d.label("Total time", `${total} minutes (${(total / 60).toFixed(2)} hours, ${hm(total)})`);
+    d.h(2, "Where the time went");
+    d.table(["Support Category", "Element or task", "Minutes", "hh:mm"], lines.flatMap(l => l.items.map(([it, m]) => [l.cat, it, String(m), hm(m)])), [3400, 3600, 1200, 1400]);
+    const out = Timesheets.outside(t.entries, from, to); const warns = [...t.warnings]; if (out.length) warns.push(`${out.length} entries are outside the claim period.`);
+    if (warns.length) { d.h(2, "Checked before claiming"); warns.forEach(w => d.bullet(w)); }
+    d.h(2, "Sign-off");
+    d.p("Checked by DCES: ______________________________   Date: ______________");
+    d.p("Timesheet: " + t.file, { italic: true, color: "5B7F95" });
+  });
+  save(await d.blob("Claim summary"), `Claim_summary_${tsList.length === 1 ? safe(tsList[0].name).replace(/\s+/g, "_") : "developers"}.docx`);
+});
 
 // ---------- reset for the next course ----------
 function resetSorter(keepSheet) {
@@ -387,31 +769,33 @@ function resetSorter(keepSheet) {
   model = null; items = []; dev = null; filled = null;
   if (!keep) sheet = null;
   const clear = keep ? ["ccode", "cname", "due"] : SETUP;
-  clear.forEach(k => { $("#" + k).value = ""; $("#" + k).classList.remove("missing"); });
-  try { localStorage.setItem("cds-setup", JSON.stringify(Object.fromEntries(SETUP.map(x => [x, $("#" + x).value])))); } catch (e) {}
+  clear.forEach(k => { $("#" + k).value = ""; $("#" + k).classList.remove("missing"); savedSetup[k] = ""; });
+  teamSelects(); storeSetup();
   $("#docName").textContent = ""; $("#dropDoc").classList.remove("done");
-  if (!keep) { $("#xlsName").textContent = ""; $("#dropXls").classList.remove("done"); $("#progs").innerHTML = ""; $("#writers").innerHTML = ""; }
+  if (!keep) { $("#xlsName").textContent = ""; $("#dropXls").classList.remove("done"); $("#progs").innerHTML = ""; loadBlank(); }
   else $("#xlsName").textContent = "✓ " + sheet.name + " (with the last course added)";
-  $("#summary").innerHTML = ""; $("#tabs").innerHTML = ""; $("#mods").innerHTML = '<p class="empty">Add a course draft in step 1.</p>';
+  $("#summary").innerHTML = ""; $("#tabs").innerHTML = ""; $("#mods").innerHTML = '<p class="empty">Add the approved draft in step 4.</p>'; resetReview();
   $("#dupWarn").innerHTML = ""; say("#confirmMsg", ""); setDownloads();
   $("#devName").textContent = ""; $("#dropDev").classList.remove("done");
-  $("#devSel").innerHTML = "<option>Add the sheet first</option>"; $("#devSel").disabled = true; $("#dlPack").disabled = true; $("#dlDevSheet").disabled = true;
+  $("#devSel").innerHTML = "<option>Add the sheet first</option>"; $("#devSel").disabled = true; $("#dlPack").disabled = true; $("#dlDevSheet").disabled = true; $("#dlTs").disabled = true;
   say("#devMsg", ""); $("#devPreview tbody").innerHTML = "";
   codePreview(); gallery();
-  $("#loadMsg").textContent = keep ? "Ready for the next course: add its draft. New rows go below the last course in the same sheet." : "The sorter is empty. Add a course draft and a sheet to start.";
-  $("#s1").scrollIntoView({ behavior: "smooth", block: "start" });
+  $("#loadMsg").textContent = keep ? "Ready for the next course: add its draft. New rows go below the last course in the same sheet." : "The Hub is empty and the blank template is loaded. Add a course draft to start.";
+  $("#s0").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 // reset asks for a second click, so nothing is lost by accident
 function armReset(btn, keepSheet) {
   const label = btn.textContent; let armed = false, t = null;
   btn.addEventListener("click", () => {
-    if (!armed && (model || sheet)) { armed = true; btn.textContent = filled ? "Downloaded the sheet? Click again to reset" : "Click again to reset"; t = setTimeout(() => { armed = false; btn.textContent = label; }, 5000); return; }
+    if (!armed && (model || filled || (sheet && !sheet.blank))) { armed = true; btn.textContent = filled ? "Downloaded the sheet? Click again to reset" : "Click again to reset"; t = setTimeout(() => { armed = false; btn.textContent = label; }, 5000); return; }
     clearTimeout(t); armed = false; btn.textContent = label; resetSorter(keepSheet);
   });
 }
 armReset($("#resetBtn"), false); armReset($("#resetBtn2"), false);
 $("#nextSame").addEventListener("click", () => resetSorter(true));
 
-// start with the example draft so the page is never empty
-if (!window.NO_SAMPLE) sample();
+// open with the blank T06 template ready; the example draft loads only when asked
+loadBlank();
+// the logo on the page also goes into the header of every Word document the Hub makes
+(() => { const img = document.querySelector(".wcg-logo"); if (img) fetch(img.src).then(r => r.ok ? r.arrayBuffer() : null).then(b => { if (b) WordDocLogo.bytes = new Uint8Array(b); }).catch(() => {}); })();
 })();

@@ -1,10 +1,10 @@
-/* Course Draft Sorter styles. Colours are CTLI brand colours; dark mode follows the device setting. */
+/* PDD Course Design Hub styles. Colours are CTLI brand colours; dark mode follows the device setting. */
 :root {
   --navy: #001489; --blue: #007dba; --lime: #c4d600; --yellow: #ffc600; --red: #d73828;
   --bg: #f5f7fa; --panel: #ffffff; --ink: #14204a; --muted: #55607e; --line: #d7dee8; --tint: #e8eff7;
   --chip-text: #001489; --warn-bg: #fff4cc; --warn-ink: #6b4a00; --bad-bg: #fbebeb; --bad-ink: #a1271b; --ok-bg: #e5f4e4; --ok-ink: #1e6b1e;
   --focus: #007dba;
-  --font: "Atkinson Hyperlegible", "Segoe UI", Arial, sans-serif; --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --font: "Century Gothic", CenturyGothic, AppleGothic, "Questrial", "Segoe UI", sans-serif; --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0c1330; --panel: #131c42; --ink: #e8ecf7; --muted: #a6b0cf; --line: #2a3566; --tint: #1a2554;
@@ -135,3 +135,54 @@ button.reset { border-color: var(--red); color: var(--bad-ink) }
 .nextbox { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin-top: 14px; background: var(--bg) }
 .nextbox p { margin: 0; font-size: 14px }
 .nextbox .small-note { margin-top: 8px; font-size: 12.5px; color: var(--muted) }
+.units-ed { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px }
+.unit-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--bg); display: grid; gap: 6px }
+.unit-card input, .unit-card textarea, .people-ed textarea, .people-ed select { font: inherit; font-size: 14px; padding: 7px 9px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); width: 100% }
+.unit-card textarea { min-height: 96px }
+.unit-card .rm { font-size: 12.5px; min-height: 32px; padding: 4px 10px; justify-self: start }
+.people-ed { display: grid; grid-template-columns: minmax(200px, 300px) 1fr; gap: 12px }
+.people-ed label { font-size: 13px; font-weight: 700; display: grid; gap: 4px }
+@media (max-width: 640px) { .people-ed { grid-template-columns: 1fr } }
+.small-note { font-size: 13px; color: var(--muted); margin: 8px 0 }
+/* ---- learning design review ---- */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px }
+.chip { font-size: 13px; min-height: 34px; padding: 4px 12px; border-radius: 999px; border: 1.5px solid var(--line); color: var(--ink); background: var(--panel) }
+.chip.on { background: var(--navy); border-color: var(--navy); color: #fff }
+.udl-list { display: grid; gap: 10px; max-height: 640px; overflow: auto; padding-right: 4px }
+.udl-row { display: grid; grid-template-columns: 1fr 1.35fr; gap: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--panel) }
+.udl-row p { margin: 4px 0 0; font-size: 13.5px }
+.udl-k { font-size: 12px; font-weight: 700; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
+.udl-orig p { color: var(--muted); white-space: pre-line }
+.udl-sugg { border-left: 5px solid var(--yellow); background: color-mix(in srgb, var(--yellow) 12%, var(--panel)); border-radius: 8px; padding: 8px 10px }
+.udl-ins { margin-top: 6px; font-size: 13px; line-height: 1.7 }
+.udl-ins mark { background: #FFE97A; color: #14204a; padding: 1px 4px; border-radius: 3px }
+.udl-ins mark.h { font-weight: 700 }
+.pchip { font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 9px; color: #14204a }
+.pchip.udl-engagement, .tile.udl-engagement { background: #F9DCEA } .pchip.udl-representation, .tile.udl-representation { background: #D7EBF6 }
+.pchip.udl-action-expression, .tile.udl-action-expression { background: #E6EFC7 } .pchip.udl-accessibility, .tile.udl-accessibility { background: #ECEFF3 }
+.pchip.udl-moodle-flow, .tile.udl-moodle-flow { background: #D9DCF0 }
+.tile[class*="udl-"] b, .tile[class*="udl-"] span { color: #14204a }
+@media (max-width: 720px) { .udl-row { grid-template-columns: 1fr } }
+/* Western Cape Government logo: always on white, top left */
+.logobar { background: #fff; border-bottom: 1px solid #E3E9EF; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)) }
+.logobar .in { max-width: 1080px; margin: 0 auto; display: flex; align-items: center }
+.wcg-logo { height: 56px; width: auto; display: block }
+@media (max-width: 480px) { .wcg-logo { height: 44px } }
+
+/* ---- palette templates and timesheets ---- */
+.tplhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.swatches .swatch { width: 18px; height: 18px; margin-left: 2px }
+.tplstrip { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 8px }
+.tpl { border: 1px solid var(--line); border-radius: 10px; padding: 6px; background: var(--bg); cursor: zoom-in; text-align: left; font: inherit; color: inherit; display: block; width: 100% }
+.tpl img { width: 100%; height: 110px; object-fit: contain; object-position: center; background: var(--tint); border-radius: 6px; display: block; background: #fff }
+.tpl b { display: block; font-size: 13px; margin-top: 5px } .tpl span { font-size: 11.5px; color: var(--muted); font-family: var(--mono) }
+dialog#tplBig { border: 0; border-radius: 12px; padding: 14px; max-width: min(92vw, 900px); max-height: 92vh }
+dialog#tplBig img { max-width: 100%; max-height: 76vh; display: block; margin: 0 auto }
+dialog#tplBig::backdrop { background: rgba(0, 20, 80, .55) }
+.tscard { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-top: 12px; background: var(--panel) }
+.tscard h3 { margin: 0 0 2px } .tscard .meta { font-size: 13.5px; color: var(--muted); margin-bottom: 8px }
+.tscard table td.copy { cursor: copy } .tscard table td.copy:hover { background: var(--tint) }
+.tscard .warns { font-size: 13px; color: var(--warn-ink); background: var(--warn-bg); border-radius: 8px; padding: 6px 10px; margin: 8px 0 0 }
+.tscard .warns ul { margin: 4px 0 0; padding-left: 18px }
+.over { color: var(--bad-ink); font-weight: 700 }
+.devpick input[type=month] { font: inherit; padding: 7px 9px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); min-height: 40px }

@@ -1,4 +1,4 @@
-// Course Draft Sorter: reads and writes the Resource Creation Sheet (.xlsx) in the browser.
+// PDD Course Design Hub: reads and writes the Resource Creation Sheet (.xlsx) in the browser.
 // It edits the workbook's own XML, so styles, dropdowns, formulas and tabs stay exactly as they are.
 const XL_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const XL_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
@@ -128,9 +128,9 @@ class Workbook {
     const q = (n) => doc.getElementsByTagNameNS(XL_NS, n)[0];
     const add = (parent, xml) => { const el = this.parser.parseFromString(`<x xmlns="${XL_NS}">${xml}</x>`, "application/xml").documentElement.firstChild; parent.appendChild(doc.importNode(el, true)); const c = parent.getElementsByTagNameNS(XL_NS, el.localName).length; parent.setAttribute("count", c); return c - 1; };
     const fonts = q("fonts"), fills = q("fills"), xfs = q("cellXfs"), borders = q("borders");
-    const fWhite = add(fonts, '<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>');
-    const fTitle = add(fonts, '<font><b/><sz val="16"/><color rgb="FF001489"/><name val="Arial"/></font>');
-    const fBody = add(fonts, '<font><sz val="9.5"/><color rgb="FF001489"/><name val="Arial"/></font>');
+    const fWhite = add(fonts, '<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Century Gothic"/></font>');
+    const fTitle = add(fonts, '<font><b/><sz val="16"/><color rgb="FF001489"/><name val="Century Gothic"/></font>');
+    const fBody = add(fonts, '<font><sz val="9.5"/><color rgb="FF001489"/><name val="Century Gothic"/></font>');
     const navy = add(fills, '<fill><patternFill patternType="solid"><fgColor rgb="FF001489"/><bgColor indexed="64"/></patternFill></fill>');
     const bd = add(borders, '<border><left style="thin"><color rgb="FFA6BBC8"/></left><right style="thin"><color rgb="FFA6BBC8"/></right><top style="thin"><color rgb="FFA6BBC8"/></top><bottom style="thin"><color rgb="FFA6BBC8"/></bottom><diagonal/></border>');
     const head = add(xfs, `<xf numFmtId="0" fontId="${fWhite}" fillId="${navy}" borderId="${bd}" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>`);

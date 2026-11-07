@@ -1,4 +1,4 @@
-// Course Draft Sorter: reads a course draft (.docx). Rules live in config.js.
+// PDD Course Design Hub: reads a course draft (.docx). Rules live in config.js.
 // Course draft parser: reads a .docx and sorts it into course page content, modules, topics and resources.
 const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 const R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
@@ -45,7 +45,8 @@ async function parseDocx(buf, JSZip, DOMParserImpl) {
   const cmFile = zip.file("word/comments.xml");
   if (cmFile) {
     const cd = parse(await cmFile.async("string"));
-    all(cd, "comment").forEach(c => { comments[wattr(c, "id")] = { author: wattr(c, "author") || "", text: clean(all(c, "t").map(t => t.textContent).join(" ")) }; });
+    const reviewer = CFG.review ? CFG.review.author : null; // comments left by the learning design review are not flags
+    all(cd, "comment").forEach(c => { if (reviewer && wattr(c, "author") === reviewer) return; comments[wattr(c, "id")] = { author: wattr(c, "author") || "", text: clean(all(c, "t").map(t => t.textContent).join(" ")) }; });
   }
 
   let coreTitle = "";
