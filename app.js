@@ -592,7 +592,7 @@ $("#dlTs").addEventListener("click", async () => {
     const plos = uniq([I.course, ...rows.map(x => x.prog)]);
     const wb = await Workbook.load(await t08Buf());
     await Timesheets.fill(wb, { name: person ? label : "", month: MONTH_NAMES[m - 1], year: y, course: [I.unit, I.course].filter(Boolean).join(" · "),
-      codes: rows.map(rowCode), plos,
+      codes: rows.map(rowCode), plos, claimUrl: ((dev.links || []).find(l => /^PDD Support Claim/i.test(l.what)) || {}).url || "",
       elements: rows.map(x => ({ code: rowCode(x), resource: x.resource, module: x.module, tool: [x.tools, x.product].filter(Boolean).join(", "), due: x.due, planned: x.days, status: x.status })) });
     save(await wb.blob(), `${safe(person ? label : "Developer")}_Content_Developer_Timesheet_${MONTH_NAMES[m - 1].slice(0, 3)} ${y}.xlsx`);
     say("#devMsg", `Timesheet ready for ${label}: ${rows.length} element${rows.length === 1 ? "" : "s"} in the item code list.`);

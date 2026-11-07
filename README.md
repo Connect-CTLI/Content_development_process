@@ -135,6 +135,8 @@ The **PDD tools** menu can also make each project's folder in Google Drive, with
 
 **Timesheets:** in the project's T06, **PDD tools → Timesheet for a developer…** makes their T08 for the month in the Timesheets folder and adds it to Project Links.
 
+**Into the PDD Support Claim:** paste the claim workbook's link in the project's Project Links tab (row "PDD Support Claim"). Timesheets made by the Hub or by PDD tools then have an **Open the PDD Support Claim** link on their Claim lines tab. To fill the Claim Form straight from a timesheet, add `PDD_Support_Claim.gs` to the claim workbook once (Extensions → Apps Script → paste → Save). Its **PDD claim → Fill the Claim Form from a timesheet…** menu copies the timesheet's claim lines into the Claim Form from row 24. The claim workbook works out the payment as before. Keep the claim link out of this repository, because GitHub Pages is public.
+
 **With the Hub:** download the project's T06 (File → Download → Microsoft Excel) and add it to the Hub. The Hub shows the Project Links in step 8 and puts them in each developer's content pack. After the Hub fills the sheet, bring it back with File → Import → Replace spreadsheet in the project's T06, so its links and menu stay.
 
 ## Google Drive

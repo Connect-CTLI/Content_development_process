@@ -122,6 +122,7 @@ const Timesheets = (() => {
     if (li) {
       (d.codes || []).forEach((c, i) => li.set(S.listCodes + (i + 2), c));
       (d.plos || []).forEach((p, i) => li.set(S.listPlos + (i + 2), p));
+      if (d.claimUrl) li.set("G2", d.claimUrl);
     }
     const me = await wb.sheet(S.elements);
     if (me) (d.elements || []).slice(0, 100).forEach((x, i) => {

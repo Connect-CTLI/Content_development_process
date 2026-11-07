@@ -373,6 +373,7 @@ function makeTimesheet(who, month) {
     var plos = [course].concat(mine.map(function (r) { return r[1]; })).filter(function (x, i, a) { return x && a.indexOf(x) === i; });
     lists.getRange(2, 4, plos.length, 1).setValues(plos.map(function (p) { return [p]; }));
   }
+  if (lists && links["PDD Support Claim"]) lists.getRange("G2").setValue(links["PDD Support Claim"]);
   var me = t.getSheetByName("My elements");
   if (me && mine.length) me.getRange(6, 1, Math.min(100, mine.length), 6).setValues(mine.slice(0, 100).map(function (r) {
     return [r[0], r[5], r[6], [r[19], r[28]].filter(String).join(", "), r[10] || "", r[8] === "" ? "" : r[8]];
