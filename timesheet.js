@@ -20,7 +20,7 @@ const Timesheets = (() => {
     if (v === "" || v == null) return null;
     if (typeof v === "number") return v > 20000 ? Math.floor(v) : null;
     const s = String(v).trim(); let y, mo, d, m;
-    if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s))) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+    if ((m = /^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/.exec(s))) { y = +m[1]; mo = +m[2]; d = +m[3]; }
     else if ((m = /^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/.exec(s))) { d = +m[1]; mo = +m[2]; y = +m[3]; if (mo > 12 && d <= 12) [d, mo] = [mo, d]; }
     else if ((m = /^(\d{1,2})\s+([A-Za-z]{3,})\.?\s+(\d{2,4})$/.exec(s))) { d = +m[1]; mo = MONTHS.findIndex(x => x.startsWith(m[2].toLowerCase().slice(0, 3))) + 1; y = +m[3]; }
     else return null;

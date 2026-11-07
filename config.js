@@ -163,7 +163,8 @@ var SORTER_CONFIG = {
     dataUnits: { firstCol: "Q", lastCol: "Z", lastRow: 41 },
     projectPlan: "Project Plan",
     startStatus: "Not started",
-    timeLog: "Time Log", timeLogFirstRow: 5, timeLogLastRow: 1504
+    timeLog: "Time Log", timeLogFirstRow: 5, timeLogLastRow: 1504,
+    links: "Project Links"   // Google Drive links for the project (PDD tools → New project fills it)
   },
 
   // ---- Timesheets (T08) and the PDD Support Claim ----

@@ -489,7 +489,9 @@ async function loadDev(buf, name) {
     const bp = wb.has(S.blueprint) ? await wb.sheet(S.blueprint) : null; const B = S.blueprintCells;
     const info = bp ? { course: bp.text(B.course), unit: bp.text(B.unit), dces: bp.text(B.dces), coord: B.coordinator ? bp.text(B.coordinator) : "" } : {};
     const names = new Set(); rows.forEach(x => [x.vid, x.vid2].forEach(v => splitNames(v).forEach(n => names.add(n))));
-    dev = { buf, name, rows, snips, info, map: M, hasSnips: wb.has(S.snippets) };
+    const links = [];
+    if (wb.has(S.links)) { const pl = await wb.sheet(S.links); for (let r = 5; r <= 60; r++) { const u = pl.text("C" + r); if (/^https?:\/\//i.test(u)) links.push({ what: pl.text("A" + r), phase: pl.text("B" + r), url: u }); } }
+    dev = { buf, name, rows, snips, info, map: M, hasSnips: wb.has(S.snippets), links };
     const list = [...names].sort();
     $("#devSel").innerHTML = list.map(n => `<option>${esc(n)}</option>`).join("") + '<option value="__none">Not assigned yet</option><option value="__all">Everyone (all rows)</option>';
     $("#devSel").disabled = false; $("#dlPack").disabled = false; $("#dlDevSheet").disabled = false; $("#dlTs").disabled = false;
@@ -497,6 +499,7 @@ async function loadDev(buf, name) {
     say("#devMsg", list.length ? `${list.length} developer${list.length > 1 ? "s" : ""} found in the sheet.` : "No developer names yet in the Visual Instructional Designer columns. Ask the developers to choose their elements first.", !list.length);
     if (!dev.hasSnips) say("#devMsg", "This sheet has no Snippets tab, so the packs will have no content. Fill it with the Hub first (step 6).", true);
     devPreview(); if (tsList.length) renderTs();
+    $("#devLinks").innerHTML = links.length ? `<details class="box" open><summary>Project files in Google Drive (${links.length})</summary><ul class="links">${links.filter(l => !/^T08 master/i.test(l.what)).map(l => `<li><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.what)}</a> <span>${esc(l.phase)}</span></li>`).join("")}</ul></details>` : '<p class="small-note">No Google Drive links in this sheet yet. Make the project with PDD tools → New project in Google Drive, or paste the links in the Project Links tab, and they go into every developer pack.</p>';
   } catch (e) { console.error(e); $("#devName").textContent = "That file could not be read as the Resource Creation Sheet."; }
 }
 function devRows() {
@@ -536,6 +539,11 @@ $("#dlPack").addEventListener("click", async () => {
     ["Colour palette", pals.map(n => PAL[n] ? `${n} (primary ${PAL[n].p}, highlight ${PAL[n].h})` : n).join("; ") || "Not set"],
     ["Unit", I.unit || "—"], ["Programme Co-ordinator", I.coord || "—"], ["DCES (project lead)", I.dces || "—"]
   ].map(([a, b]) => [a, b]), [3000, 6600]);
+  const myLinks = (dev.links || []).filter(l => !/^T08 master/i.test(l.what) && (!/^Timesheet:/i.test(l.what) || !person || l.what.toLowerCase().includes(label.toLowerCase())));
+  if (myLinks.length) {
+    d.h(2, "Project files in Google Drive");
+    d.table(["What", "Link"], myLinks.map(l => [l.what, l.url]), [3400, 6200]);
+  }
   d.h(2, person ? "Your elements, by due date" : "Elements, by due date");
   d.table(["Item code", "Resource", "Module", "Tool", "Hours", "Due"], rows.map(x => [rowCode(x), x.resource, x.module, [x.tools, x.product].filter(Boolean).join(", "), x.days == null ? "—" : fmtDur(x.days), fmtDate(x.due)]), [2200, 1600, 2300, 1500, 700, 1300]);
   d.h(2, "When you finish an element");
@@ -775,7 +783,7 @@ function resetSorter(keepSheet) {
   $("#dupWarn").innerHTML = ""; say("#confirmMsg", ""); setDownloads();
   $("#devName").textContent = ""; $("#dropDev").classList.remove("done");
   $("#devSel").innerHTML = "<option>Add the sheet first</option>"; $("#devSel").disabled = true; $("#dlPack").disabled = true; $("#dlDevSheet").disabled = true; $("#dlTs").disabled = true;
-  say("#devMsg", ""); $("#devPreview tbody").innerHTML = "";
+  say("#devMsg", ""); $("#devPreview tbody").innerHTML = ""; $("#devLinks").innerHTML = "";
   codePreview(); gallery();
   $("#loadMsg").textContent = keep ? "Ready for the next course: add its draft. New rows go below the last course in the same sheet." : "The Hub is empty and the blank template is loaded. Add a course draft to start.";
   $("#s0").scrollIntoView({ behavior: "smooth", block: "start" });

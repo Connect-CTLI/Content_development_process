@@ -187,3 +187,5 @@ dialog#tplBig::backdrop { background: rgba(0, 20, 80, .55) }
 .over { color: var(--bad-ink); font-weight: 700 }
 .devpick input[type=month] { font: inherit; padding: 7px 9px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); min-height: 40px }
 .tplmiss { display: flex; height: 110px; align-items: center; justify-content: center; text-align: center; border-radius: 6px; background: var(--tint); color: var(--muted); font-size: 12px; padding: 6px }
+
+ul.links { margin: 8px 0 0; padding-left: 18px; font-size: 14px } ul.links li { margin: 3px 0 } ul.links span { color: var(--muted); font-size: 12px }

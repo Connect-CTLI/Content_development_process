@@ -104,7 +104,7 @@ GitHub Pages sites are public. That is fine here: the repository holds no CTLI c
 
 ## Team lists in Google Sheets (Apps Script)
 
-If the team keeps T06 in Google Sheets, add `apps-script/T06_Team_Lists.gs` to the sheet once:
+If the team keeps T06 in Google Sheets, add `T06_Team_Lists.gs` to the sheet once:
 
 1. Open the sheet → **Extensions → Apps Script**.
 2. Delete what is there, paste the whole file, and click **Save**.
@@ -116,6 +116,26 @@ A **PDD tools** menu appears with two options:
 - **Fresh copy for a new course:** copies the sheet with the course rows cleared and every team list kept.
 
 The first time you use it, Google asks you to allow it.
+
+## A Google Drive folder for every project
+
+The **PDD tools** menu can also make each project's folder in Google Drive, with its own copies of the templates and every link in one place.
+
+**Set up once**
+1. Upload the whole `PDD_SOP_and_Templates` folder to Google Drive, ideally to a Shared drive so the team keeps access.
+2. In its `Resource Creation Sheet` folder, open `T06_Resource_Creation_Sheet.xlsx` with Google Sheets, then File → Save as Google Sheets. This Google Sheet is the master T06.
+3. In the master T06: Extensions → Apps Script → paste the whole of `T06_Team_Lists.gs` (in the repository, or `T06_Team_Lists_AppsScript.gs` in the template pack) → Save.
+4. In Apps Script, click **Services (+)** → **Drive API** → **Add**, so the templates are copied as Google Docs and Sheets. Without it they are copied as Word and Excel files.
+5. Reload the sheet. The first time you use the menu, Google asks you to allow it.
+
+**For each new course** (from the master T06): **PDD tools → New project in Google Drive…** Add the course code, course name, unit, Programme Co-ordinator and DCES. It creates `PDD Projects / <code> – <name>` next to the template folder, containing:
+- Phase A to D folders with the project's own copies of T01 to T05 (Programme and Course filled in at the top)
+- a `Resource Creation Sheet` folder with the project's T06 (course details filled in, and the PDD tools menu) and a `Timesheets` folder
+- the **Project Links** tab in that T06, listing every folder and file, plus links to the SOP and the Canva master templates in the template folder
+
+**Timesheets:** in the project's T06, **PDD tools → Timesheet for a developer…** makes their T08 for the month in the Timesheets folder and adds it to Project Links.
+
+**With the Hub:** download the project's T06 (File → Download → Microsoft Excel) and add it to the Hub. The Hub shows the Project Links in step 8 and puts them in each developer's content pack. After the Hub fills the sheet, bring it back with File → Import → Replace spreadsheet in the project's T06, so its links and menu stay.
 
 ## Google Drive
 
