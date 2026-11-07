@@ -66,6 +66,10 @@ The draft must use the Course Draft template's heading styles:
 - Heading 2 for each topic.
 - Bold lines for activities ("Assignment:", "Reflective post:", "Knowledge check:").
 
+## Files in the repository
+
+Everything the Hub needs is in the top-level files, so no folders are needed: `index.html`, `styles.css`, `config.js`, `files.js` (built-in blank T06, T08, logo and example draft), `thumbs.js` (template pictures), `parser.js`, `workbook.js`, `worddoc.js`, `visuals.js`, `udl.js`, `timesheet.js` and `app.js`. GitHub's web upload takes up to 100 files at a time and drops folders easily, so upload files, not folders.
+
 ## Change it on GitHub (no Claude, no installs)
 
 Open a file on github.com, click the **pencil** icon, edit, then click **Commit changes**. GitHub Pages updates within a few minutes.
@@ -79,12 +83,12 @@ Open a file on github.com, click the **pencil** icon, edit, then click **Commit 
 | Learning design review: the checks themselves | `udl.js` |
 | Support categories for timesheets and claims, and the timesheet cells the Hub fills | `config.js` → `timesheet` |
 | How completed timesheets are read and claim lines worked out | `timesheet.js` |
-| The blank timesheet | upload a new `templates/T08_Developer_Timesheet.xlsx` |
-| The Canva template pictures for each palette | upload JPGs to `assets/templates/`, named like `Banner_P7.jpg` (the kinds are listed in `config.js` → `templateKinds`) |
+| The blank timesheet | upload `T08_Developer_Timesheet.xlsx` into the `templates` folder (otherwise the built-in copy in `files.js` is used) |
+| The Canva template pictures for each palette | `thumbs.js` (all the pictures in one file; the kinds are listed in `config.js` → `templateKinds`) |
 | Wording on the page | `index.html` |
 | Colours and layout | `styles.css` |
 | The visual examples | `visuals.js` |
-| The blank T06 offered by **Start from a blank T06** | upload a new `templates/T06_Resource_Creation_Sheet.xlsx` (Add file → Upload files, same name) |
+| The blank T06 | create a `templates` folder and upload `T06_Resource_Creation_Sheet.xlsx` into it: the Hub uses it instead of its built-in copy in `files.js` |
 | The example draft | upload a new `examples/sample-course-draft.docx` |
 
 The other files (`parser.js`, `workbook.js`, `worddoc.js`, `timesheet.js`, `app.js`) do the work and rarely need changes.

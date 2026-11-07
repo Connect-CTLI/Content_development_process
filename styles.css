@@ -186,3 +186,4 @@ dialog#tplBig::backdrop { background: rgba(0, 20, 80, .55) }
 .tscard .warns ul { margin: 4px 0 0; padding-left: 18px }
 .over { color: var(--bad-ink); font-weight: 700 }
 .devpick input[type=month] { font: inherit; padding: 7px 9px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); min-height: 40px }
+.tplmiss { display: flex; height: 110px; align-items: center; justify-content: center; text-align: center; border-radius: 6px; background: var(--tint); color: var(--muted); font-size: 12px; padding: 6px }

@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="logobar"><div class="in"><img src="assets/wcg-education-logo.png" alt="Western Cape Government: Education" class="wcg-logo" width="203" height="56"></div></div>
+<div class="logobar"><div class="in"><img src="assets/wcg-education-logo.png" alt="Western Cape Government: Education" class="wcg-logo" width="203" height="56" onerror="if(window.LOGO_DATA&&this.src!==window.LOGO_DATA)this.src=window.LOGO_DATA"></div></div>
 <div class="brand"><div class="in"><span>CTLI • PROGRAMME DESIGN &amp; DEVELOPMENT</span><span class="steps" aria-hidden="true"><span class="on"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></div></div>
 <header class="hero"><div class="in">
   <h1>PDD Course Design Hub</h1>
@@ -197,9 +197,10 @@
   </section>
 </main>
 <dialog id="tplBig"><img alt=""><p></p><button id="tplClose">Close</button></dialog>
-<footer class="foot">PDD Course Design Hub · CTLI Programme Design &amp; Development. Rules and settings live in <code>config.js</code>. <b>Version 5.0 (7 Nov 2026)</b></footer>
+<footer class="foot">PDD Course Design Hub · CTLI Programme Design &amp; Development. Rules and settings live in <code>config.js</code>. <b>Version 5.2 (7 Nov 2026)</b></footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="files.js"></script>
 <script src="config.js"></script>
 <script src="parser.js"></script>
 <script src="workbook.js"></script>
@@ -207,11 +208,12 @@
 <script src="visuals.js"></script>
 <script src="udl.js"></script>
 <script src="timesheet.js"></script>
+<script src="thumbs.js"></script>
 <script src="app.js"></script>
 <script>
 // if any part of the tool did not load, say which file is missing instead of showing a broken page
 window.addEventListener("load", () => {
-  const need = { "jszip (internet connection)": typeof JSZip !== "undefined", "config.js": typeof SORTER_CONFIG !== "undefined", "parser.js": typeof parseDocx !== "undefined", "workbook.js": typeof Workbook !== "undefined", "worddoc.js": typeof WordDoc !== "undefined", "visuals.js": typeof VISUALS !== "undefined", "timesheet.js": typeof Timesheets !== "undefined" };
+  const need = { "jszip (internet connection)": typeof JSZip !== "undefined", "config.js": typeof SORTER_CONFIG !== "undefined", "parser.js": typeof parseDocx !== "undefined", "workbook.js": typeof Workbook !== "undefined", "worddoc.js": typeof WordDoc !== "undefined", "visuals.js": typeof VISUALS !== "undefined", "timesheet.js": typeof Timesheets !== "undefined", "thumbs.js (template pictures)": typeof window.TPL_THUMBS !== "undefined", "files.js (templates and logo)": typeof window.BLANK_T06_B64 !== "undefined" };
   const missing = Object.keys(need).filter(k => !need[k]);
   if (missing.length) document.querySelector("main").insertAdjacentHTML("afterbegin", `<div class="warnbox"><b>The Hub could not start.</b> These files are missing next to index.html: ${missing.join(", ")}. Upload them to the same folder in the repository.</div>`);
 });

@@ -178,10 +178,10 @@ function sample() {
   fetch("examples/sample-course-draft.docx").then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(b => loadOriginal(b, "Example course draft: SMT work planning", true)).catch(() => { $("#loadMsg").textContent = "The example draft is not available here."; });
 }
 // the blank T06 template ships with the Hub and is loaded when the page opens
-async function blankBuf() {
-  if (window.BLANK_T06_B64) { const bin = atob(window.BLANK_T06_B64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
-  const r = await fetch("templates/T06_Resource_Creation_Sheet.xlsx"); if (!r.ok) throw new Error("no template"); return r.arrayBuffer();
-}
+const fromB64 = s => { const bin = atob(s); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; };
+// an uploaded file in templates/ wins; otherwise the built-in copy (files.js) is used
+async function fileOr(path, b64) { if (location.protocol !== "file:") { try { const r = await fetch(path, { cache: "no-cache" }); if (r.ok) return r.arrayBuffer(); } catch (e) {} } if (b64) return fromB64(b64); throw new Error("missing " + path); }
+async function blankBuf() { return fileOr("templates/T06_Resource_Creation_Sheet.xlsx", window.BLANK_T06_B64); }
 async function loadBlank() {
   try { await loadSheet(await blankBuf(), "T06_Resource_Creation_Sheet.xlsx", "Blank T06 template (preloaded)"); }
   catch (e) { $("#loadMsg").textContent = "The blank template could not be loaded here. Add your own copy of T06 instead."; }
@@ -575,10 +575,7 @@ $("#dlDevSheet").addEventListener("click", async () => {
 // ---------- timesheets: a T08 for each developer (step 8) ----------
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 $("#tsMonth").value = new Date().toISOString().slice(0, 7);
-async function t08Buf() {
-  if (window.BLANK_T08_B64) { const bin = atob(window.BLANK_T08_B64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
-  const r = await fetch("templates/T08_Developer_Timesheet.xlsx"); if (!r.ok) throw new Error("no timesheet template"); return r.arrayBuffer();
-}
+async function t08Buf() { return fileOr("templates/T08_Developer_Timesheet.xlsx", window.BLANK_T08_B64); }
 $("#dlTs").addEventListener("click", async () => {
   if (!dev) return;
   try {
@@ -600,7 +597,7 @@ function tplStrip() {
   $("#tplSw").innerHTML = `<span class="swatch" style="background:${p}" title="Primary ${p}"></span><span class="swatch" style="background:${h}" title="Highlight ${h}"></span> <span class="small-note">${esc(name)}</span>`;
   $("#tplStrip").innerHTML = (CFG.templateKinds || []).map(([f, kind]) => {
     const file = `${f}_${code}`; const src = (window.TPL_THUMBS && window.TPL_THUMBS[file]) || `assets/templates/${file}.jpg`;
-    return `<button type="button" class="tpl" data-src="${esc(src)}" data-label="${esc(kind)} · ${esc(name)} · CTLI_${esc(file)}"><img src="${esc(src)}" alt="${esc(kind)} template in the ${esc(name)} palette" loading="lazy"><b>${esc(kind)}</b><span>CTLI_${esc(file)}</span></button>`;
+    return `<button type="button" class="tpl" data-src="${esc(src)}" data-label="${esc(kind)} · ${esc(name)} · CTLI_${esc(file)}"><img src="${esc(src)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'tplmiss',textContent:'Picture missing: upload thumbs.js'}))"><b>${esc(kind)}</b><span>CTLI_${esc(file)}</span></button>`;
   }).join("");
 }
 $("#tplStrip").addEventListener("click", e => {
@@ -796,6 +793,8 @@ $("#nextSame").addEventListener("click", () => resetSorter(true));
 
 // open with the blank T06 template ready; the example draft loads only when asked
 loadBlank();
+// if assets/ is not in the repository, show the built-in copy of the logo (files.js)
+(() => { const img = document.querySelector(".wcg-logo"); const fix = () => { if (img && img.complete && img.naturalWidth === 0 && window.LOGO_DATA) img.src = window.LOGO_DATA; }; fix(); window.addEventListener("load", fix); })();
 // the logo on the page also goes into the header of every Word document the Hub makes
-(() => { const img = document.querySelector(".wcg-logo"); if (img) fetch(img.src).then(r => r.ok ? r.arrayBuffer() : null).then(b => { if (b) WordDocLogo.bytes = new Uint8Array(b); }).catch(() => {}); })();
+(() => { const img = document.querySelector(".wcg-logo"); if (img) fetch("assets/wcg-education-logo.png").then(r => r.ok ? r : fetch(window.LOGO_DATA || img.src)).catch(() => fetch(window.LOGO_DATA || img.src)).then(r => r.ok ? r.arrayBuffer() : null).then(b => { if (b) WordDocLogo.bytes = new Uint8Array(b); }).catch(() => {}); })();
 })();
