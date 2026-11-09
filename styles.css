@@ -189,3 +189,15 @@ dialog#tplBig::backdrop { background: rgba(0, 20, 80, .55) }
 .tplmiss { display: flex; height: 110px; align-items: center; justify-content: center; text-align: center; border-radius: 6px; background: var(--tint); color: var(--muted); font-size: 12px; padding: 6px }
 
 ul.links { margin: 8px 0 0; padding-left: 18px; font-size: 14px } ul.links li { margin: 3px 0 } ul.links span { color: var(--muted); font-size: 12px }
+
+/* ---- tabs: steps 1–4, 5–7, 8–9 ---- */
+.tabbar { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 10px 0; background: var(--bg) }
+.tabbar [role=tab] { display: flex; align-items: center; gap: 10px; text-align: left; font: inherit; color: var(--ink); background: var(--panel); border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; cursor: pointer; min-height: 56px }
+.tabbar [role=tab] b { display: block; font-size: 15px } .tabbar [role=tab] small { display: block; color: var(--muted); font-size: 12.5px }
+.tabbar .tn { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--tint); color: var(--ink) }
+.tabbar [role=tab][aria-selected=true] { border-color: var(--navy, #001489); background: var(--navy, #001489); color: #fff }
+.tabbar [role=tab][aria-selected=true] small { color: rgba(255,255,255,.8) } .tabbar [role=tab][aria-selected=true] .tn { background: #FFC600; color: #001489 }
+.tabbar [role=tab]:focus-visible { outline: 3px solid #FFC600; outline-offset: 2px }
+.tabpanel { display: grid; gap: 22px } .tabpanel[hidden] { display: none }
+.tabnext { display: flex; justify-content: flex-end }
+@media (max-width: 640px) { .tabbar { grid-template-columns: 1fr 1fr 1fr; gap: 6px } .tabbar [role=tab] { flex-direction: column; text-align: center; gap: 4px; padding: 8px 6px } .tabbar [role=tab] small { display: none } .tabbar [role=tab] b { font-size: 13px } }

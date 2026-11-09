@@ -9,6 +9,23 @@ const PAL = Object.fromEntries(CFG.palettes.map(([n, p, h]) => [n, { p, h }]));
 const TABS = ["Course Description", "Learning Objectives", "Course Structure", "Badging & Certification", "Navigation & Online Learning Tips", "References and additional reading material"];
 let model = null, items = [], sheet = null, filled = null, dev = null;
 
+// ---------- tabs: steps 1–4, 5–7 and 8–9 ----------
+function showTab(id, scroll) {
+  document.querySelectorAll(".tabpanel").forEach(p => { p.hidden = p.id !== id; });
+  document.querySelectorAll(".tabbar [role=tab]").forEach(b => { const on = b.dataset.tab === id; b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1; });
+  try { localStorage.setItem("pddHubTab", id); } catch (e) {}
+  if (scroll) document.querySelector(".tabbar").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+// opens the tab a step is in, then scrolls to it
+function goStep(sel) { const el = $(sel); const p = el && el.closest(".tabpanel"); if (p && p.hidden) showTab(p.id); if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 30); }
+document.querySelectorAll(".tabbar [role=tab]").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab, true)));
+document.querySelector(".tabbar").addEventListener("keydown", e => {
+  if (!/^Arrow(Left|Right)$/.test(e.key)) return; const bs = [...document.querySelectorAll(".tabbar [role=tab]")];
+  const i = bs.indexOf(document.activeElement); if (i < 0) return; const n = bs[(i + (e.key === "ArrowRight" ? 1 : bs.length - 1)) % bs.length]; n.focus(); showTab(n.dataset.tab);
+});
+document.querySelectorAll("[data-goto]").forEach(b => b.addEventListener("click", () => showTab(b.dataset.goto, true)));
+(() => { let t = "tabA"; try { t = localStorage.getItem("pddHubTab") || t; } catch (e) {} showTab(document.getElementById(t) ? t : "tabA"); })();
+
 // find each Resource Creation column by its heading in row 2, so older and newer sheets both work
 function rcMap(rc) {
   const heads = []; for (let c = 1; c <= 90; c++) heads.push([colName(c), rc.text(colName(c) + S.rcHeaderRow)]);
@@ -141,7 +158,7 @@ async function loadDoc(buf, name, isExample) {
     $("#docName").innerHTML = (isExample ? "Example: " : "✓ ") + esc(name); $("#dropDoc").classList.add("done");
     if (!$("#cname").value && model.title) $("#cname").value = model.title;
     filled = null; setDownloads(); render();
-    if (!isExample) $("#s2").scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!isExample) goStep("#s2");
   } catch (e) { console.error(e); $("#docName").textContent = "That file could not be read as a Word document. Save it as .docx and try again."; $("#dropDoc").classList.remove("done"); }
 }
 async function loadSheet(buf, name, label) {
@@ -207,7 +224,7 @@ async function loadOriginal(buf, name, isExample) {
     $("#origName").textContent = (isExample ? "Example: " : "✓ ") + name; $("#dropOrig").classList.add("done");
     ["#dlReviewed", "#dlAccepted", "#useAccepted", "#useOriginal"].forEach(id => { $(id).disabled = false; });
     udlFilter = "All"; renderReview();
-    $("#sR").scrollIntoView({ behavior: "smooth", block: "start" });
+    goStep("#sR");
   } catch (e) { console.error(e); $("#origName").textContent = "That file could not be read as a Word document. Save it as .docx and try again."; $("#dropOrig").classList.remove("done"); }
 }
 const pslug = p => p.toLowerCase().replace(/[^a-z]+/g, "-");
@@ -409,7 +426,7 @@ async function confirmFill() {
     sheet = { ...sheet, buf: await blob.arrayBuffer(), counts: { ...sheet.counts, [s.prog + "|" + s.src]: rows.length } };
     dupCheck(); setDownloads(); showFilled();
     say("#confirmMsg", `Done: ${rows.length} rows, ${qCount} questions and ${snCount} snippets added. Download the sheet in step 7.`);
-    $("#s4").scrollIntoView({ behavior: "smooth", block: "start" });
+    goStep("#s4");
   } catch (e) { console.error(e); say("#confirmMsg", "Something went wrong while filling the sheet: " + (e.message || e), true); }
 }
 function fmtDate(v) { if (typeof v === "number" && v > 20000) { const d = new Date(Date.UTC(1899, 11, 30) + v * 86400000); return d.toLocaleDateString("en-ZA", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }); } if (/^\d{4}-\d\d-\d\d$/.test(v || "")) return fmtDate((Date.UTC(+v.slice(0, 4), +v.slice(5, 7) - 1, +v.slice(8, 10)) - Date.UTC(1899, 11, 30)) / 86400000); return v || ""; }
@@ -786,7 +803,7 @@ function resetSorter(keepSheet) {
   say("#devMsg", ""); $("#devPreview tbody").innerHTML = ""; $("#devLinks").innerHTML = "";
   codePreview(); gallery();
   $("#loadMsg").textContent = keep ? "Ready for the next course: add its draft. New rows go below the last course in the same sheet." : "The Hub is empty and the blank template is loaded. Add a course draft to start.";
-  $("#s0").scrollIntoView({ behavior: "smooth", block: "start" });
+  goStep("#s0");
 }
 // reset asks for a second click, so nothing is lost by accident
 function armReset(btn, keepSheet) {

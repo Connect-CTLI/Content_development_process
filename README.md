@@ -24,6 +24,8 @@ The developers choose the elements they build in Resource Creation (Visual Instr
 
 Open the GitHub Pages link for this repository (Settings → Pages shows it). The blank Resource Creation Sheet (T06) is already loaded.
 
+The Hub has three tabs at the top: **Draft and review** (steps 1–4), **Build the sheet** (steps 5–7) and **Developers and claims** (steps 8–9). It moves to the next tab by itself when a step is done, and it remembers the last tab you used.
+
 1. **Programme team:** choose the unit and its Programme Co-ordinator, and the DCES.
    - To add or change people, open **Edit team lists and co-ordinators**. You can edit:
      - units and their Programme Co-ordinators

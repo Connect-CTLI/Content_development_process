@@ -16,6 +16,8 @@
   <p>Choose the programme team and add the course draft. The Hub reviews it against UDL and the Moodle course flow for you to approve, then snippets the draft into resources, fills in the Resource Creation, Question Bank, Snippets and Design Blueprint tabs, and gives you the sheet back to download. Once the developers have chosen their elements, it makes each developer a pack of their content and a timesheet, and turns their completed timesheets into claim lines for the PDD Support Claim. Files are read in your browser and never uploaded.</p>
 </div></header>
 <main>
+<nav class="tabbar" role="tablist" aria-label="Sections of the Hub"><button type="button" role="tab" id="t_tabA" aria-controls="tabA" data-tab="tabA"><span class="tn">1</span><span><b>Draft and review</b><small>Steps 1–4</small></span></button><button type="button" role="tab" id="t_tabB" aria-controls="tabB" data-tab="tabB"><span class="tn">2</span><span><b>Build the sheet</b><small>Steps 5–7</small></span></button><button type="button" role="tab" id="t_tabC" aria-controls="tabC" data-tab="tabC"><span class="tn">3</span><span><b>Developers and claims</b><small>Steps 8–9</small></span></button></nav>
+<div class="tabpanel" id="tabA" role="tabpanel" aria-labelledby="t_tabA">
   <section class="step" aria-labelledby="s0">
     <h2 id="s0"><span class="n">1</span> Programme team</h2>
     <p class="lead">Choose the unit and its Programme Co-ordinator. They go into the Design Blueprint and Project Plan, and the developer packs.</p>
@@ -95,6 +97,9 @@
     <div class="row"><button id="useAccepted" disabled>Use the draft with every suggestion accepted</button><button id="useOriginal" disabled>Use the original draft as it is</button><button id="blankBtn">Use the blank template</button><button id="dlBlank">Download the blank template</button></div>
   </section>
 
+  <div class="tabnext"><button type="button" class="primary" data-goto="tabB">Next: Build the sheet (steps 5–7) →</button></div>
+</div>
+<div class="tabpanel" id="tabB" role="tabpanel" aria-labelledby="t_tabB" hidden>
   <section class="step" aria-labelledby="s2">
     <h2 id="s2"><span class="n">5</span> Course set-up</h2>
     <p class="lead">These go into every row the Hub adds. The course code makes the item codes: the programme, the type, then the main source and the source element, exactly as column A of Resource Creation builds them.</p>
@@ -144,6 +149,9 @@
     <div class="tablewrap"><table id="preview"><thead><tr><th>Row</th><th>Item code</th><th>Resource</th><th>Module</th><th>Description</th><th>Duration (hh:mm)</th><th>Palette</th><th>PDD QA 1 due</th><th>Writer</th></tr></thead><tbody></tbody></table></div>
   </section>
 
+  <div class="tabnext"><button type="button" class="primary" data-goto="tabC">Next: Developers and claims (steps 8–9) →</button></div>
+</div>
+<div class="tabpanel" id="tabC" role="tabpanel" aria-labelledby="t_tabC" hidden>
   <section class="step" aria-labelledby="s5">
     <h2 id="s5"><span class="n">8</span> Developer packs</h2>
     <p class="lead">When the developers have chosen their elements, add the updated sheet here. Pick a developer to download a pack made for them: a Word document with their elements, due dates, duration, checklist and content, and a copy of the sheet showing only their rows.</p>
@@ -196,9 +204,10 @@
     </div>
     <p class="status" id="tsMsg" role="status" aria-live="polite"></p>
   </section>
+</div>
 </main>
 <dialog id="tplBig"><img alt=""><p></p><button id="tplClose">Close</button></dialog>
-<footer class="foot">PDD Course Design Hub · CTLI Programme Design &amp; Development. Rules and settings live in <code>config.js</code>. <b>Version 5.5 (7 Nov 2026)</b></footer>
+<footer class="foot">PDD Course Design Hub · CTLI Programme Design &amp; Development. Rules and settings live in <code>config.js</code>. <b>Version 5.6 (9 Nov 2026)</b></footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="files.js"></script>
