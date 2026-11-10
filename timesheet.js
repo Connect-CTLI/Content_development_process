@@ -1,4 +1,4 @@
-// PDD Course Design Hub: developer timesheets (T08).
+// CTLI Design Hub: developer timesheets (T08).
 // Reads completed timesheets (the T08 layout or the older content developer timesheet), works out the
 // claim lines for the PDD Support Claim, and fills a new T08 for a developer. Settings: config.js → timesheet.
 const Timesheets = (() => {

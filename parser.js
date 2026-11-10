@@ -1,4 +1,4 @@
-// PDD Course Design Hub: reads a course draft (.docx). Rules live in config.js.
+// CTLI Design Hub: reads a course draft (.docx). Rules live in config.js.
 // Course draft parser: reads a .docx and sorts it into course page content, modules, topics and resources.
 const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 const R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";

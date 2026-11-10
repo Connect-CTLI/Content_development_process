@@ -1,4 +1,4 @@
-/* PDD Course Design Hub styles. Colours are CTLI brand colours; dark mode follows the device setting. */
+/* CTLI Design Hub styles. Colours are CTLI brand colours; dark mode follows the device setting. */
 :root {
   --navy: #001489; --blue: #007dba; --lime: #c4d600; --yellow: #ffc600; --red: #d73828;
   --bg: #f5f7fa; --panel: #ffffff; --ink: #14204a; --muted: #55607e; --line: #d7dee8; --tint: #e8eff7;
@@ -15,12 +15,12 @@
 * { box-sizing: border-box }
 body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5; margin: 0 }
 .brand { background: var(--navy); color: #fff; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
-.brand .in, main { max-width: 1080px; margin: 0 auto }
+.brand .in, main { max-width: var(--wrap, 1080px); margin: 0 auto }
 .brand .in { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12px; letter-spacing: .12em; font-weight: 700 }
 .brand .steps { display: flex; gap: 6px } .brand .steps span { width: 28px; height: 5px; border-radius: 3px; background: #a6bbc8; display: inline-block; margin-top: 6px }
 .brand .steps span.on { background: var(--lime) }
 header.hero { background: var(--blue); color: #fff; padding-block: 22px 20px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
-header.hero .in { max-width: 1080px; margin: 0 auto }
+header.hero .in { max-width: var(--wrap, 1080px); margin: 0 auto }
 h1 { font-size: clamp(24px, 4vw, 32px); margin: 0 0 6px; text-wrap: balance }
 header.hero p { margin: 0; max-width: 70ch; font-size: 16px }
 main { padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px }
@@ -130,7 +130,7 @@ button[disabled] { opacity: .5; cursor: not-allowed }
 .devpick label { font-size: 13px; font-weight: 700; display: grid; gap: 4px; min-width: 240px }
 .devpick select { font: inherit; padding: 7px 9px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); min-height: 40px }
 .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-left: 4px; border: 1px solid var(--line) }
-footer.foot { max-width: 1080px; margin: 0 auto; padding: 0 16px 32px; color: var(--muted); font-size: 13px }
+footer.foot { max-width: var(--wrap, 1080px); margin: 0 auto; padding: 0 16px 32px; color: var(--muted); font-size: 13px }
 button.reset { border-color: var(--red); color: var(--bad-ink) }
 .nextbox { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin-top: 14px; background: var(--bg) }
 .nextbox p { margin: 0; font-size: 14px }
@@ -165,7 +165,7 @@ button.reset { border-color: var(--red); color: var(--bad-ink) }
 @media (max-width: 720px) { .udl-row { grid-template-columns: 1fr } }
 /* Western Cape Government logo: always on white, top left */
 .logobar { background: #fff; border-bottom: 1px solid #E3E9EF; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)) }
-.logobar .in { max-width: 1080px; margin: 0 auto; display: flex; align-items: center }
+.logobar .in { max-width: var(--wrap, 1080px); margin: 0 auto; display: flex; align-items: center }
 .wcg-logo { height: 56px; width: auto; display: block }
 @media (max-width: 480px) { .wcg-logo { height: 44px } }
 
@@ -201,3 +201,22 @@ ul.links { margin: 8px 0 0; padding-left: 18px; font-size: 14px } ul.links li { 
 .tabpanel { display: grid; gap: 22px } .tabpanel[hidden] { display: none }
 .tabnext { display: flex; justify-content: flex-end }
 @media (max-width: 640px) { .tabbar { grid-template-columns: 1fr 1fr 1fr; gap: 6px } .tabbar [role=tab] { flex-direction: column; text-align: center; gap: 4px; padding: 8px 6px } .tabbar [role=tab] small { display: none } .tabbar [role=tab] b { font-size: 13px } }
+.bkbox { display: grid; grid-template-columns: 1fr auto; gap: 8px 10px; align-items: end; margin: 14px 0 6px; padding: 12px; border: 1.5px dashed var(--line); border-radius: 12px; background: var(--bg) }
+.bkbox label { display: grid; gap: 6px; font-weight: 700 } .bkbox input { font: inherit; padding: 9px 10px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); min-width: 0 }
+.bkbox .small-note { grid-column: 1 / -1; margin: 0 } .bkbox.on { border-style: solid; border-color: #8fad15 }
+@media (max-width: 640px) { .bkbox { grid-template-columns: 1fr } }
+
+/* ---- screen sizes: wider on big screens, tighter on phones ---- */
+:root { --wrap: 1080px }
+@media (min-width: 1400px) { :root { --wrap: 1280px } }
+@media (min-width: 1800px) { :root { --wrap: 1440px } }
+html, body { overflow-x: clip }
+@media (max-width: 640px) {
+  .step { padding: 16px 14px } .step h2 { font-size: 19px }
+  .row, .outtabs, .devpick { flex-wrap: wrap } .row > button, .outtabs > button, .devpick > button { flex: 1 1 100% }
+  .setup { grid-template-columns: 1fr !important }
+  .drops { grid-template-columns: 1fr !important }
+  .tablewrap { max-height: 60vh }
+  header.hero h1 { font-size: 24px }
+}
+@media (min-width: 641px) and (max-width: 1023px) { .setup { grid-template-columns: 1fr 1fr } }

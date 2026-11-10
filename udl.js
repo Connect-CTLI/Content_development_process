@@ -1,4 +1,4 @@
-// PDD Course Design Hub: learning design review.
+// CTLI Design Hub: learning design review.
 // Reads a course draft (.docx), checks it against Universal Design for Learning (UDL) and the CTLI Moodle course flow,
 // and writes a reviewed copy of the same document: added sections as tracked changes (highlighted), advice as comments,
 // and a summary page at the front. The wording of every suggestion is in config.js (review).

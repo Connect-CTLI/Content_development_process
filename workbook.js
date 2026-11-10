@@ -1,4 +1,4 @@
-// PDD Course Design Hub: reads and writes the Resource Creation Sheet (.xlsx) in the browser.
+// CTLI Design Hub: reads and writes the Resource Creation Sheet (.xlsx) in the browser.
 // It edits the workbook's own XML, so styles, dropdowns, formulas and tabs stay exactly as they are.
 const XL_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const XL_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";

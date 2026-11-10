@@ -1,4 +1,4 @@
-# PDD Course Design Hub
+# CTLI Design Hub
 
 A one-page tool for CTLI Programme Design & Development (PDD). It turns a course draft into resources in the Resource Creation Sheet (T06).
 
@@ -50,7 +50,8 @@ The Hub has three tabs at the top: **Draft and review** (steps 1–4), **Build t
    - **Their timesheet (T08):** choose the month first. It has their name, their item codes in the dropdown and a My elements tab with the time planned for each element.
 9. **Timesheets and claims:** drop in one or more completed timesheets (T08, or the older content developer timesheet: the Hub finds the columns by their headings). It uses the sheet from step 8 or 7, or drop a different one.
    - Set the claim period, then check the warnings for each developer (rows without a category or date, missing times, overlapping sessions, item codes that are not in the sheet).
-   - **Copy the claim lines** and paste them into the PDD Support Claim (Claim Form, from row 24), or click a cell to copy one value.
+   - **Send to the developers' workplans:** each developer's month goes into their Workplan and Time Schedule, which the PDD Support Claim reads. Needs the project's Drive backup (step 1).
+   - **Copy the claim lines** if you need them elsewhere, or click a cell to copy one value.
    - **Download the Resource Creation Sheet with the time logged:** the Time Log tab, the Time logged (hh:mm) column (AV) and planned vs logged time on the Project Plan. Adding the same developer's month again replaces their earlier rows.
    - **Download the claim summary (Word)** to keep with the claim.
 
@@ -137,7 +138,11 @@ The **PDD tools** menu can also make each project's folder in Google Drive, with
 
 **Timesheets:** in the project's T06, **PDD tools → Timesheet for a developer…** makes their T08 for the month in the Timesheets folder and adds it to Project Links.
 
-**Into the PDD Support Claim:** paste the claim workbook's link in the project's Project Links tab (row "PDD Support Claim"). Timesheets made by the Hub or by PDD tools then have an **Open the PDD Support Claim** link on their Claim lines tab. To fill the Claim Form straight from a timesheet, add `PDD_Support_Claim.gs` to the claim workbook once (Extensions → Apps Script → paste → Save). Its **PDD claim → Fill the Claim Form from a timesheet…** menu copies the timesheet's claim lines into the Claim Form from row 24. The claim workbook works out the payment as before. Keep the claim link out of this repository, because GitHub Pages is public.
+**Workplans and the PDD Support Claim:** set the claim link once in the master T06 (PDD tools → Settings). The PDD Support Claim reads each developer's **Workplan and Time Schedule** (linked in its Support reference tab). In the Hub, step 9 → **Send to the developers' workplans** adds each developer's month under the matching support category (or, in a project's T06, PDD tools → Send timesheets to the workplans). The claim then follows from the workplans as before. Keep the claim link out of this repository, because GitHub Pages is public.
+
+**Hub backup to Google Drive:** in the master T06's Apps Script, Deploy → New deployment → Web app → Execute as: Me, Who has access: Anyone → Deploy. Each new project then gets a **Hub backup link** in Project Links. Paste it in step 1 of the Hub (or add the project's sheet: the Hub finds it), and every download is also saved in the project's folder: learning design review in Phase A, snippets and visual examples in Phase B, developer packs in Phase B / Developer packs, timesheets in Resource Creation Sheet / Timesheets, claim summaries in Resource Creation Sheet / Claims, and filled sheets in Resource Creation Sheet / Hub copies.
+
+The full step-by-step is in **CTLI_Design_Hub_Google_Drive_Setup.docx** in the template pack.
 
 **With the Hub:** download the project's T06 (File → Download → Microsoft Excel) and add it to the Hub. The Hub shows the Project Links in step 8 and puts them in each developer's content pack. After the Hub fills the sheet, bring it back with File → Import → Replace spreadsheet in the project's T06, so its links and menu stay.
 

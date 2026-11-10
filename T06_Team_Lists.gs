@@ -12,6 +12,14 @@
  *     folder, and every link in the Project Links tab. Use it from the master T06 in the template folder.
  *   - Timesheet for a developer: in a project's sheet, makes that developer's T08 timesheet for a month
  *     in the project's Timesheets folder, with their item codes and elements filled in.
+ *   - Send timesheets to the workplans: in a project's sheet, adds each developer's month of work to their
+ *     Workplan and Time Schedule sheet (found in the PDD Support Claim, Support reference tab), under the
+ *     matching support category. The PDD Support Claim reads the workplans, so the claim follows.
+ *   - Settings: the link to the PDD Support Claim, and the CTLI Design Hub backup link.
+ *
+ * CTLI Design Hub backup (saves every Hub download into the project's Drive folder):
+ * in the master T06's Apps Script, Deploy → New deployment → Web app → Execute as: Me,
+ * Who has access: Anyone → Deploy. New projects then get a "Hub backup link" in Project Links.
  *
  * For Google Docs and Sheets copies (not Word and Excel), turn on the Drive API once:
  * Apps Script → Services (+) → Drive API → Add.
@@ -43,6 +51,9 @@ function onOpen() {
     .addSeparator()
     .addItem("New project in Google Drive…", "showNewProject")
     .addItem("Timesheet for a developer…", "showTimesheet")
+    .addItem("Send timesheets to the workplans…", "showWorkplanSync")
+    .addSeparator()
+    .addItem("Settings: claim link and Hub backup…", "showSettings")
     .addToUi();
 }
 
@@ -243,6 +254,8 @@ function createProject(form) {
   // this sheet: a cleared copy, with the project details filled in
   var rcsFolder = proj.createFolder("Resource Creation Sheet");
   var ts = rcsFolder.createFolder("Timesheets");
+  var claims = rcsFolder.createFolder("Claims");
+  rcsFolder.createFolder("Hub copies");
   var sheetFile = DriveApp.getFileById(SpreadsheetApp.getActive().getId()).makeCopy(code + "_T06_Resource_Creation_Sheet", rcsFolder);
   var ss = SpreadsheetApp.openById(sheetFile.getId());
   clearCourse_(ss);
@@ -252,6 +265,14 @@ function createProject(form) {
   links.push(["Timesheets folder (T08)", "Phase B", ts.getUrl(), "PDD tools → Timesheet for a developer saves timesheets here"]);
   var t08 = findInMaster_(master, /^T08_Developer_Timesheet/);
   if (t08) links.push(["T08 master timesheet", "Phase B", t08.getUrl(), "Master copy: used by Timesheet for a developer"]);
+  links.push(["Claims folder", "Claims", claims.getUrl(), "Claim summaries from the Hub are saved here"]);
+  var cfg = settings_();
+  if (cfg.claimUrl) links.push(["PDD Support Claim", "Claims", cfg.claimUrl, "Set in PDD tools → Settings"]);
+  var hub = backupLink_(proj);
+  if (hub) links.push(["Hub backup link", "All", hub, "Paste into the CTLI Design Hub (step 1) or add this sheet to the Hub: every download is saved in this project folder"]);
+  else notes.push("backup");
+  PropertiesService.getDocumentProperties().setProperty("PROJECTS_FOLDER_ID", root.getId());
+  PropertiesService.getScriptProperties().setProperty("PROJECTS_FOLDER_ID", root.getId());
   writeLinks_(ss, links);
   return { url: proj.getUrl(), sheet: ss.getUrl(), title: title, notes: notes };
 }
@@ -401,6 +422,7 @@ var NEW_PROJECT_HTML = '<!doctype html><html><head><base target="_top">' + DIALO
   'function go(){var m=document.getElementById("msg");var f={code:document.getElementById("code").value,name:document.getElementById("name").value,unit:u.value,coord:c.value,dces:document.getElementById("dces").value};' +
   'document.getElementById("go").disabled=true;m.className="msg";m.textContent="Creating the folders and copying the templates. This takes about a minute…";' +
   'google.script.run.withSuccessHandler(function(r){var n=r.notes.indexOf("drive")>=0?"<p class=\\"hint\\">The templates were copied as Word files. To get Google Docs, turn on the Drive API service (Apps Script → Services → Drive API).</p>":"";' +
+  'if(r.notes.indexOf("backup")>=0)n+="<p class=\\"hint\\">No Hub backup link yet: deploy the web app (see the top of the script), then PDD tools → Settings.</p>";' +
   'm.className="msg ok";m.innerHTML="Done: "+r.title+"<br><a href=\\""+r.url+"\\" target=\\"_blank\\">Open the project folder</a><br><a href=\\""+r.sheet+"\\" target=\\"_blank\\">Open its Resource Creation Sheet</a>"+n})' +
   '.withFailureHandler(function(e){document.getElementById("go").disabled=false;m.className="msg bad";m.textContent=e.message||e}).createProject(f)}</script></body></html>';
 var TIMESHEET_HTML = '<!doctype html><html><head><base target="_top">' + DIALOG_CSS + '</head><body>' +
@@ -411,3 +433,200 @@ var TIMESHEET_HTML = '<!doctype html><html><head><base target="_top">' + DIALOG_
   'function go(){var m=document.getElementById("msg");document.getElementById("go").disabled=true;m.className="msg";m.textContent="Making the timesheet…";' +
   'google.script.run.withSuccessHandler(function(r){m.className="msg ok";m.innerHTML=r.name+" ("+r.count+" elements)<br><a href=\\""+r.url+"\\" target=\\"_blank\\">Open the timesheet</a>";document.getElementById("go").disabled=false})' +
   '.withFailureHandler(function(e){document.getElementById("go").disabled=false;m.className="msg bad";m.textContent=e.message||e}).makeTimesheet(document.getElementById("who").value,document.getElementById("month").value)}</script></body></html>';
+
+// =====================================================================================
+// Settings: the PDD Support Claim link, and the CTLI Design Hub backup (web app)
+// =====================================================================================
+function settings_() {
+  var sp = PropertiesService.getScriptProperties();
+  var key = sp.getProperty("BACKUP_KEY");
+  if (!key) { key = Utilities.getUuid().replace(/-/g, ""); sp.setProperty("BACKUP_KEY", key); }
+  var url = ""; try { url = ScriptApp.getService().getUrl() || ""; } catch (e) {}
+  return { claimUrl: sp.getProperty("CLAIM_URL") || "", key: key, webApp: url };
+}
+function backupLink_(folder) {
+  var c = settings_(); if (!c.webApp) return "";
+  return c.webApp + "?k=" + c.key + "&f=" + folder.getId();
+}
+function showSettings() {
+  var c = settings_();
+  var html = HtmlService.createHtmlOutput(SETTINGS_HTML.replace("__CLAIM__", JSON.stringify(c.claimUrl)).replace("__WEBAPP__", JSON.stringify(c.webApp))).setWidth(480).setHeight(430);
+  SpreadsheetApp.getUi().showModalDialog(html, "PDD tools settings");
+}
+function saveSettings(form) {
+  var url = String(form.claimUrl || "").trim();
+  if (url && !/^https:\/\/docs\.google\.com\/spreadsheets\//.test(url)) throw new Error("Paste the link to the PDD Support Claim Google Sheet.");
+  PropertiesService.getScriptProperties().setProperty("CLAIM_URL", url);
+  return true;
+}
+
+// ---------- the web app: the CTLI Design Hub saves its downloads here, and sends timesheets to workplans ----------
+function doGet(e) {
+  try { var f = checkFolder_(e.parameter); return json_({ ok: true, project: f.getName(), url: f.getUrl() }); }
+  catch (err) { return json_({ ok: false, error: err.message }); }
+}
+function doPost(e) {
+  var b;
+  try { b = JSON.parse(e.postData.contents); } catch (x) { return json_({ ok: false, error: "Bad request" }); }
+  b.k = b.k || (e.parameter || {}).k; b.f = b.f || (e.parameter || {}).f;
+  try {
+    var proj = checkFolder_(b);
+    if (b.action === "save") return json_(saveFile_(proj, b));
+    if (b.action === "workplan") return json_(sendToWorkplan_(b.developer, b.month, b.manager, b.groups));
+    return json_({ ok: false, error: "Unknown action" });
+  } catch (err) { return json_({ ok: false, error: err.message }); }
+}
+function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+// the key must match, and the folder must be a project inside PDD Projects
+function checkFolder_(p) {
+  var sp = PropertiesService.getScriptProperties();
+  if (!p || !p.k || p.k !== sp.getProperty("BACKUP_KEY")) throw new Error("This backup link is not valid. Copy it again from the project's Project Links tab.");
+  var root = sp.getProperty("PROJECTS_FOLDER_ID");
+  var f = DriveApp.getFolderById(String(p.f || ""));
+  for (var up = f, i = 0; up && i < 6; i++) {
+    var ps = up.getParents(); if (!ps.hasNext()) break; var par = ps.next();
+    if (par.getId() === root) return f;
+    up = par;
+  }
+  throw new Error("This folder is not a project in " + PROJECTS_FOLDER_NAME + ".");
+}
+// where each kind of Hub download goes inside the project folder
+var BACKUP_PLACES = {
+  A: ["Phase A"], B: ["Phase B"], C: ["Phase C"], D: ["Phase D"],
+  packs: ["Phase B", "Developer packs"], sheet: ["Resource Creation Sheet", "Hub copies"],
+  timesheets: ["Resource Creation Sheet", "Timesheets"], claims: ["Resource Creation Sheet", "Claims"]
+};
+function saveFile_(proj, b) {
+  var path = (BACKUP_PLACES[b.place] || ["Hub copies"]).concat(b.sub ? [String(b.sub).replace(/[\/\\]/g, "-")] : []);
+  var folder = proj;
+  path.forEach(function (part) {
+    var it = folder.getFolders(), hit = null;
+    while (it.hasNext()) { var x = it.next(); if (x.getName() === part || x.getName().indexOf(part + " ") === 0 || x.getName().indexOf(part + " -") === 0) { hit = x; break; } }
+    folder = hit || folder.createFolder(part);
+  });
+  var name = String(b.name || "file").replace(/[\/\\]/g, "-");
+  var old = folder.getFilesByName(name); while (old.hasNext()) old.next().setTrashed(true);   // keep the newest copy only
+  var blob = Utilities.newBlob(Utilities.base64Decode(b.b64), b.mime || "application/octet-stream", name);
+  var file = folder.createFile(blob);
+  return { ok: true, url: file.getUrl(), folder: folder.getName() };
+}
+
+// =====================================================================================
+// Timesheets → Workplan and Time Schedule (which the PDD Support Claim reads)
+// =====================================================================================
+var WORKPLAN = { tab: "Workplan", nameCol: 10, linkCol: 11, refTab: "Support reference" };
+
+// the developer's workplan link, from the PDD Support Claim (Support reference tab: name in J, link in K)
+function workplanFor_(developer) {
+  var claimUrl = settings_().claimUrl || readLinks_(SpreadsheetApp.getActive())["PDD Support Claim"];
+  if (!claimUrl) throw new Error("Add the PDD Support Claim link first (PDD tools → Settings, or the Project Links tab).");
+  var claim = SpreadsheetApp.openById(idFromUrl_(claimUrl));
+  var sh = claim.getSheetByName(WORKPLAN.refTab);
+  if (!sh) throw new Error("The PDD Support Claim has no '" + WORKPLAN.refTab + "' tab.");
+  var v = sh.getRange(1, WORKPLAN.nameCol, sh.getLastRow(), 2).getValues();
+  var want = norm_(developer);
+  for (var i = 0; i < v.length; i++) if (norm_(v[i][0]) === want && /docs\.google\.com/.test(v[i][1])) return String(v[i][1]);
+  throw new Error("No workplan link for " + developer + " in the PDD Support Claim (Support reference tab).");
+}
+function norm_(s) { return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "").replace(/(.)\1+/g, "$1"); }
+
+// groups = [{ cat: "119_Multi-media design (Basic)", task, minutes, start: "yyyy-mm-dd", end: "yyyy-mm-dd" }]
+function sendToWorkplan_(developer, month, manager, groups) {
+  if (!developer) throw new Error("The timesheet has no team member name.");
+  var link = workplanFor_(developer);
+  var wp = SpreadsheetApp.openById(idFromUrl_(link));
+  var sh = wp.getSheetByName(WORKPLAN.tab);
+  if (!sh) throw new Error("The workplan for " + developer + " has no '" + WORKPLAN.tab + "' tab.");
+  var last = sh.getLastRow();
+  var vals = sh.getRange(1, 1, last, 10).getDisplayValues();
+  var forms = sh.getRange(1, 1, last, 10).getFormulas();
+  // sections: "2." | "Multi-media design (Basic)" | "Time allocation" … then task rows until "TOTAL TIME"
+  var sections = [];
+  for (var r = 0; r < last; r++) {
+    if (/^\d+\.$/.test(String(vals[r][0]).trim()) && /time allocation/i.test(vals[r][2])) {
+      var sec = { name: String(vals[r][1]).trim(), rows: [] };
+      for (var k = r + 1; k < last && !/^total time/i.test(String(vals[k][1]).trim()) && !(/^\d+\.$/.test(String(vals[k][0]).trim()) && /time allocation/i.test(vals[k][2])); k++) sec.rows.push(k);
+      sections.push(sec);
+    }
+  }
+  var done = [];
+  (groups || []).forEach(function (g) {
+    var base = String(g.cat).replace(/^\d{3}_/, "");
+    var cands = sections.filter(function (s) { return norm_(s.name) === norm_(base); })
+      .concat(sections.filter(function (s) { return norm_(s.name) === norm_(base + "_2"); }));
+    if (!cands.length) { done.push({ task: g.task, result: "no section for " + base }); return; }
+    var target = -1, updated = false;
+    cands.forEach(function (s) { s.rows.forEach(function (k) { if (target < 0 && String(vals[k][1]).trim() === g.task && String(vals[k][5]).trim() === month) { target = k; updated = true; } }); });
+    if (target < 0) cands.forEach(function (s) { s.rows.forEach(function (k) { if (target < 0 && !String(vals[k][1]).trim() && !forms[k][1]) target = k; }); });
+    if (target < 0) { done.push({ task: g.task, result: "section full: " + cands[cands.length - 1].name }); return; }
+    var row = target + 1;
+    var write = function (col, v) { if (!forms[target][col - 1]) sh.getRange(row, col).setValue(v); };
+    write(2, g.task); write(3, Math.round(g.minutes) + " min"); write(4, "Period");
+    write(5, ymd_(g.start)); write(6, month); write(8, manager || "");
+    write(9, ymd_(g.end)); write(10, ymd_(g.end));
+    vals[target][1] = g.task; vals[target][5] = month;
+    done.push({ task: g.task, result: updated ? "updated" : "added", section: base });
+  });
+  return { ok: true, developer: developer, workplan: wp.getName(), url: wp.getUrl(), rows: done };
+}
+function ymd_(s) { if (!s) return ""; var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s)); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : s; }
+
+// ---------- from a project's sheet: send its timesheets (Google Sheets) to the workplans ----------
+function showWorkplanSync() {
+  var ss = SpreadsheetApp.getActive(); var links = readLinks_(ss);
+  var list = Object.keys(links).filter(function (k) { return /^Timesheet:/i.test(k); });
+  if (!list.length) { SpreadsheetApp.getUi().alert("No timesheets in the Project Links tab yet. Make them with PDD tools → Timesheet for a developer."); return; }
+  var html = HtmlService.createHtmlOutput(SYNC_HTML.replace("__LIST__", JSON.stringify(list))).setWidth(460).setHeight(420);
+  SpreadsheetApp.getUi().showModalDialog(html, "Send timesheets to the workplans");
+}
+function syncTimesheets(labels) {
+  var ss = SpreadsheetApp.getActive(); var links = readLinks_(ss);
+  var bp = ss.getSheetByName(BLUEPRINT); var manager = bp ? String(bp.getRange("D11").getValue()) : "";
+  return labels.map(function (label) {
+    try {
+      var t = SpreadsheetApp.openById(idFromUrl_(links[label]));
+      var g = groupTimesheet_(t);
+      var r = sendToWorkplan_(g.developer, g.month, manager, g.groups);
+      r.label = label; return r;
+    } catch (e) { return { ok: false, label: label, error: e.message }; }
+  });
+}
+// reads a T08 timesheet (Google Sheet) and groups its sessions: one workplan task per support category and course
+function groupTimesheet_(t) {
+  var sh = t.getSheetByName("Timesheet"); if (!sh) throw new Error(t.getName() + " is not a T08 timesheet.");
+  var developer = String(sh.getRange("G2").getDisplayValue()).trim();
+  var month = [sh.getRange("G3").getDisplayValue(), sh.getRange("I3").getDisplayValue()].join(" ").trim();
+  var v = sh.getRange(6, 1, 100, 13).getValues();      // A..M; L = date used, M = PLO used
+  var groups = {};
+  v.forEach(function (r) {
+    var mins = Number(r[9]); var cat = String(r[3] || "").trim().replace(/[,;.\s]+$/, "");
+    if (!mins || !cat) return;
+    var plo = String(r[12] || r[2] || "").trim(); var key = cat + "|" + plo;
+    var d = r[11] instanceof Date ? r[11] : null;
+    var g = groups[key] || (groups[key] = { cat: cat, plo: plo, minutes: 0, start: null, end: null, items: [] });
+    g.minutes += mins;
+    if (d) { if (!g.start || d < g.start) g.start = d; if (!g.end || d > g.end) g.end = d; }
+    var item = String(r[5] || "").trim(); if (item && g.items.indexOf(item) < 0) g.items.push(item);
+  });
+  var tz = Session.getScriptTimeZone();
+  return { developer: developer, month: month, groups: Object.keys(groups).map(function (k) {
+    var g = groups[k];
+    return { cat: g.cat, minutes: g.minutes, task: taskText_(g.plo, g.items), start: g.start ? Utilities.formatDate(g.start, tz, "yyyy-MM-dd") : "", end: g.end ? Utilities.formatDate(g.end, tz, "yyyy-MM-dd") : "" };
+  }) };
+}
+function taskText_(plo, items) { var t = (plo ? plo + ": " : "") + (items.length ? items.join(", ") : "time"); return t.length > 95 ? t.slice(0, 94) + "…" : t; }
+
+var SETTINGS_HTML = '<!doctype html><html><head><base target="_top">' + DIALOG_CSS + '</head><body>' +
+  '<label>Link to the PDD Support Claim (Google Sheet)</label><input id="claim" placeholder="https://docs.google.com/spreadsheets/d/…">' +
+  '<p class="hint">New projects get this link in Project Links, and timesheets show an "Open the PDD Support Claim" link. The developers\' workplans are found in its Support reference tab. Do not put this link on GitHub.</p>' +
+  '<label>CTLI Design Hub backup</label><p class="hint" id="wa"></p>' +
+  '<button id="go" onclick="go()">Save</button><div class="msg" id="msg"></div>' +
+  '<script>document.getElementById("claim").value=__CLAIM__;var w=__WEBAPP__;document.getElementById("wa").innerHTML=w?"On. New projects get a Hub backup link, so every Hub download is saved in that project\'s folder.":"Off. To turn it on: Extensions → Apps Script → Deploy → New deployment → Web app → Execute as: Me, Who has access: Anyone → Deploy. Then make new projects as usual.";' +
+  'function go(){var m=document.getElementById("msg");google.script.run.withSuccessHandler(function(){m.className="msg ok";m.textContent="Saved."}).withFailureHandler(function(e){m.className="msg bad";m.textContent=e.message||e}).saveSettings({claimUrl:document.getElementById("claim").value})}</script></body></html>';
+var SYNC_HTML = '<!doctype html><html><head><base target="_top">' + DIALOG_CSS + '</head><body>' +
+  '<p class="hint">Adds each month of work to the developer\'s Workplan and Time Schedule, under the matching support category: the task (course and items), the time in minutes, the start date, the month claimed, the manager (the DCES on the Design Blueprint), and the due and completed dates. Sending the same timesheet again updates its rows.</p>' +
+  '<div id="list"></div><button id="go" onclick="go()">Send to the workplans</button><div class="msg" id="msg"></div>' +
+  '<script>var L=__LIST__;document.getElementById("list").innerHTML=L.map(function(x,i){return "<label style=\\"font-weight:normal\\"><input type=\\"checkbox\\" style=\\"width:auto\\" checked value=\\""+i+"\\"> "+x+"</label>"}).join("");' +
+  'function go(){var m=document.getElementById("msg");var pick=[].slice.call(document.querySelectorAll("#list input:checked")).map(function(c){return L[+c.value]});if(!pick.length)return;document.getElementById("go").disabled=true;m.className="msg";m.textContent="Sending…";' +
+  'google.script.run.withSuccessHandler(function(rs){document.getElementById("go").disabled=false;m.className="msg";m.innerHTML=rs.map(function(r){if(!r.ok)return "<p class=\\"bad\\">"+r.label+": "+r.error+"</p>";return "<p class=\\"ok\\">"+r.developer+" → <a target=\\"_blank\\" href=\\""+r.url+"\\">"+r.workplan+"</a><br>"+r.rows.map(function(x){return x.task+": "+x.result}).join("<br>")+"</p>"}).join("")})' +
+  '.withFailureHandler(function(e){document.getElementById("go").disabled=false;m.className="msg bad";m.textContent=e.message||e}).syncTimesheets(pick)}</script></body></html>';

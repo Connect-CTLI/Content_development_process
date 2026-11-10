@@ -1,4 +1,4 @@
-// PDD Course Design Hub: the page. Rules and column positions live in config.js.
+// CTLI Design Hub: the page. Rules and column positions live in config.js.
 (() => {
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -132,11 +132,24 @@ codePreview();
 
 // ---------- visual examples ----------
 function colours() { const p = PAL[$("#pal").value] || { p: "#007DBA", h: "#FFC600" }; return p; }
-function gallery() {
-  const { p, h } = colours();
-  $("#gallery").innerHTML = VISUALS.codes.map(c => `<div class="gal">${VISUALS.svg(c, p, h, "Example of " + (NAME[c] || c))}<b>${esc(c)} · ${esc(NAME[c] || c)}</b><span>${esc(VISUALS.about(c))}</span></div>`).join("");
+function gallery() { $("#visPal").textContent = $("#pal").value || CFG.palettes[0][0]; }
+// a page with every element type in the chosen palette (step 6), to share with the developers or print to PDF
+function visualsPage() {
+  const name = $("#pal").value || CFG.palettes[0][0]; const { p, h } = colours();
+  const cards = VISUALS.codes.map(c => `<figure>${VISUALS.svg(c, p, h, "Example of " + (NAME[c] || c))}<figcaption><b>${esc(c)} · ${esc(NAME[c] || c)}</b><span>${esc(VISUALS.about(c))}</span></figcaption></figure>`).join("");
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Visual examples · ${esc(name)}</title>
+<style>body{font-family:"Century Gothic",Questrial,"Avenir Next",Arial,sans-serif;color:#14204a;margin:0;padding:24px 16px;background:#fff}main{max-width:1100px;margin:0 auto}
+h1{font-size:24px;margin:0 0 4px;color:#001489}p{margin:0 0 16px;color:#55607e}.sw{display:inline-block;width:18px;height:18px;border-radius:4px;vertical-align:-3px;margin-right:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}figure{margin:0;border:1px solid #d7dee8;border-radius:12px;padding:10px;break-inside:avoid}
+figure svg{width:100%;height:auto;display:block;border-radius:8px}figcaption b{display:block;font-size:14px;margin-top:8px}figcaption span{font-size:12.5px;color:#55607e}
+@media print{body{padding:0}.grid{grid-template-columns:repeat(3,1fr)}}</style></head><body><main>
+<p style="font-size:12px;font-weight:700;color:#007dba;letter-spacing:.04em">CTLI • PROGRAMME DESIGN &amp; DEVELOPMENT · CTLI DESIGN HUB</p>
+<h1>Visual examples of the elements developers can choose</h1>
+<p><span class="sw" style="background:${p}"></span><span class="sw" style="background:${h}"></span>${esc(name)} palette. Developers choose what to build in the Resource Creation Sheet; these show what each element can look like. Build from the Canva master templates (T07).</p>
+<div class="grid">${cards}</div></main></body></html>`;
 }
 gallery(); $("#pal").addEventListener("change", () => { gallery(); tplStrip(); if (model) render(); });
+$("#dlVisuals").addEventListener("click", () => { const name = $("#pal").value || CFG.palettes[0][0]; save(new Blob([visualsPage()], { type: "text/html" }), `CTLI_Visual_examples_${safe(name.split(/\s+/)[0])}.html`, "B"); });
 
 // ---------- loading files ----------
 function wireDrop(drop, input, handler) {
@@ -165,6 +178,7 @@ async function loadSheet(buf, name, label) {
   try {
     const wb = await Workbook.load(buf.slice(0));
     if (!wb.has(S.rc)) throw new Error(`There is no "${S.rc}" tab in this workbook.`);
+    readLinks(wb).then(adoptLinks).catch(() => {});
     const rc = await wb.sheet(S.rc); const map = rcMap(rc); C = map; const counts = {};
     for (let r = S.rcFirstRow; r <= Math.max(S.rcLastRow, rc.lastUsedRow()); r++) {
       const k = rc.text(C.programme + r) + "|" + rc.text(C.source + r); if (k !== "|") counts[k] = (counts[k] || 0) + 1;
@@ -248,8 +262,8 @@ function resetReview() {
   ["#dlReviewed", "#dlAccepted", "#useAccepted", "#useOriginal"].forEach(id => { $(id).disabled = true; });
 }
 const baseName = n => String(n || "course_draft").replace(/\.docx$/i, "").replace(/[\\/:*?"<>|]+/g, "-");
-$("#dlReviewed").addEventListener("click", () => review && save(review.reviewed, baseName(review.name) + "_learning_design_review.docx"));
-$("#dlAccepted").addEventListener("click", () => review && save(new Blob([review.accepted], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }), baseName(review.name) + "_all_suggestions.docx"));
+$("#dlReviewed").addEventListener("click", () => review && save(review.reviewed, baseName(review.name) + "_learning_design_review.docx", "A"));
+$("#dlAccepted").addEventListener("click", () => review && save(new Blob([review.accepted], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }), baseName(review.name) + "_all_suggestions.docx", "A"));
 $("#useAccepted").addEventListener("click", () => review && loadDoc(review.accepted.slice(0), baseName(review.name) + " (every suggestion accepted)"));
 $("#useOriginal").addEventListener("click", () => review && loadDoc(review.buf.slice(0), baseName(review.name) + " (original)"));
 
@@ -452,13 +466,58 @@ function setDownloads() {
 // inside claude.ai the page asks the viewer to confirm the save; everywhere else (GitHub Pages) it downloads directly
 let dlCap = null;
 if (window.claude && window.claude.use) window.claude.use("downloads").then(d => { dlCap = d; }).catch(() => {});
-async function save(blob, name) {
+async function save(blob, name, place, sub) {
+  if (place && backup) backupFile(blob, name, place, sub);
   if (dlCap) { try { await dlCap.save({ filename: name, data: blob }); } catch (e) { if (e && e.code !== "declined") say("#confirmMsg", "The file could not be saved here: " + (e.message || e.code), true); } return; }
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 const safe = s => String(s || "").replace(/[\\/:*?"<>|]+/g, "-").trim();
-$("#dlSheet").addEventListener("click", () => filled && save(filled.blob, filled.name.replace(/\.xlsx$/i, "") + ".xlsx"));
+
+// ---------- Google Drive backup: every download is also saved in the project's Drive folder ----------
+// The link is the project's "Hub backup link" (Project Links tab), made by PDD tools → New project.
+let backup = null;
+const BK = "ctliHubBackup";
+function bkSay(html, on) { $("#bkMsg").innerHTML = html; document.querySelector(".bkbox").classList.toggle("on", !!on); }
+async function checkBackup(url) {
+  url = String(url || "").trim();
+  if (!url) { backup = null; bkSay("Off: downloads are saved on this computer only. Paste the project's Hub backup link (or add the project's sheet in step 4) and every download is also saved in the project's Drive folder."); try { localStorage.removeItem(BK); } catch (e) {} return; }
+  if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(url) || !/[?&]k=/.test(url) || !/[?&]f=/.test(url)) { backup = null; bkSay("That is not a Hub backup link. Copy it from the Hub backup link row of the project's Project Links tab."); return; }
+  bkSay("Connecting…");
+  try {
+    const r = await fetch(url, { cache: "no-store" }).then(x => x.json());
+    if (!r.ok) throw new Error(r.error || "not allowed");
+    backup = { url, project: r.project, folder: r.url };
+    bkSay(`On: every download is also saved in <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.project)}</a> in Google Drive.`, true);
+    try { localStorage.setItem(BK, url); } catch (e) {}
+  } catch (e) { backup = null; bkSay("Could not connect to the project's Drive folder: " + esc(e.message || e) + ". Check the link, and that the PDD tools web app is deployed (Who has access: Anyone)."); }
+}
+function adoptLinks(links) {
+  const hub = (links || []).find(l => /^Hub backup link/i.test(l.what));
+  if (hub && hub.url !== $("#bkLink").value.trim()) { $("#bkLink").value = hub.url; checkBackup(hub.url); }
+  const claim = (links || []).find(l => /^PDD Support Claim/i.test(l.what));
+  if (claim) $("#claimLink").innerHTML = `<a href="${esc(claim.url)}" target="_blank" rel="noopener">Open the PDD Support Claim →</a> The claim reads the developers' workplans, so send the timesheets to the workplans first.`;
+}
+async function readLinks(wb) {
+  const out = []; if (!wb.has(S.links)) return out; const pl = await wb.sheet(S.links);
+  for (let r = 5; r <= 60; r++) { const u = pl.text("C" + r); if (/^https?:\/\//i.test(u)) out.push({ what: pl.text("A" + r), phase: pl.text("B" + r), url: u }); }
+  return out;
+}
+const b64 = blob => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = no; r.readAsDataURL(blob); });
+async function backupPost(body) {
+  const r = await fetch(backup.url, { method: "POST", body: JSON.stringify(body) }).then(x => x.json());
+  if (!r.ok) throw new Error(r.error || "failed"); return r;
+}
+async function backupFile(blob, name, place, sub) {
+  try {
+    const r = await backupPost({ action: "save", place, sub: sub || "", name, mime: blob.type || "application/octet-stream", b64: await b64(blob) });
+    bkSay(`On: saved <b>${esc(name)}</b> in <a href="${esc(backup.folder)}" target="_blank" rel="noopener">${esc(backup.project)}</a> › ${esc(r.folder)}.`, true);
+  } catch (e) { bkSay(`On, but <b>${esc(name)}</b> was not saved in Drive: ${esc(e.message || e)}. It is still on this computer.`, true); }
+}
+$("#bkCheck").addEventListener("click", () => checkBackup($("#bkLink").value));
+$("#bkLink").addEventListener("change", () => checkBackup($("#bkLink").value));
+(() => { let u = ""; try { u = localStorage.getItem(BK) || ""; } catch (e) {} if (u) { $("#bkLink").value = u; checkBackup(u); } })();
+$("#dlSheet").addEventListener("click", () => filled && save(filled.blob, filled.name.replace(/\.xlsx$/i, "") + ".xlsx", "sheet"));
 $("#dlSnips").addEventListener("click", async () => {
   if (!filled) return; const s = filled.setup; const { p, h } = PAL[s.pal] || {};
   const d = new WordDoc.Doc();
@@ -468,7 +527,7 @@ $("#dlSnips").addEventListener("click", async () => {
   d.p("Each snippet is the content from the course draft for one resource. Item codes match column A of the Resource Creation Sheet. Suggested elements are ideas only: the developers choose what to build in the sheet.", { italic: true, color: "55607E" });
   d.table(["Item code", "Resource", "Module", "Title"], items.filter(i => i.include).map(it => [codeOf(it), it.course ? "Course page tab" : NAME[it.code] || it.code, it.module, it.title]), [2200, 1600, 2500, 3300]);
   items.filter(i => i.include).forEach(it => snippetBlock(d, { code: codeOf(it), resource: it.course ? "Course page tab" : NAME[it.code] || it.code, module: it.module, topic: it.topic, title: it.title, text: it.text, links: it.links.map(l => (l.label && l.label !== l.url ? l.label + ": " : "") + l.url), check: it.flags, sugg: suggestions(it).map(([c, why]) => `${c} ${NAME[c] || c}: ${why}`) }));
-  save(await d.blob("Content snippets"), `Snippets_${safe(s.ccode)}.docx`);
+  save(await d.blob("Content snippets"), `Snippets_${safe(s.ccode)}.docx`, "B");
 });
 function snippetBlock(d, sn, level = 2) {
   d.h(level, `${sn.code} · ${sn.title}`);
@@ -506,8 +565,7 @@ async function loadDev(buf, name) {
     const bp = wb.has(S.blueprint) ? await wb.sheet(S.blueprint) : null; const B = S.blueprintCells;
     const info = bp ? { course: bp.text(B.course), unit: bp.text(B.unit), dces: bp.text(B.dces), coord: B.coordinator ? bp.text(B.coordinator) : "" } : {};
     const names = new Set(); rows.forEach(x => [x.vid, x.vid2].forEach(v => splitNames(v).forEach(n => names.add(n))));
-    const links = [];
-    if (wb.has(S.links)) { const pl = await wb.sheet(S.links); for (let r = 5; r <= 60; r++) { const u = pl.text("C" + r); if (/^https?:\/\//i.test(u)) links.push({ what: pl.text("A" + r), phase: pl.text("B" + r), url: u }); } }
+    const links = await readLinks(wb); adoptLinks(links);
     dev = { buf, name, rows, snips, info, map: M, hasSnips: wb.has(S.snippets), links };
     const list = [...names].sort();
     $("#devSel").innerHTML = list.map(n => `<option>${esc(n)}</option>`).join("") + '<option value="__none">Not assigned yet</option><option value="__all">Everyone (all rows)</option>';
@@ -586,7 +644,7 @@ $("#dlPack").addEventListener("click", async () => {
       if (s.check.length) { d.p("To check", { bold: true, color: "A1271B" }); s.check.forEach(l => d.bullet(l)); }
     });
   });
-  save(await d.blob("Content pack " + label), `Content_pack_${safe(label).replace(/\s+/g, "_")}.docx`);
+  save(await d.blob("Content pack " + label), `Content_pack_${safe(label).replace(/\s+/g, "_")}.docx`, "packs", label);
 });
 // their own copy of the sheet: every other developer's rows are hidden (Excel: Home → Format → Unhide rows to see them again)
 $("#dlDevSheet").addEventListener("click", async () => {
@@ -594,7 +652,7 @@ $("#dlDevSheet").addEventListener("click", async () => {
   const label = whoLabel(); const mine = new Set(devRows().map(x => x.r));
   const wb = await Workbook.load(dev.buf.slice(0)); const rc = await wb.sheet(S.rc);
   if ($("#devSel").value !== "__all") dev.rows.forEach(x => { if (!mine.has(x.r)) { const el = rc.rows.get(x.r); if (el) { el.setAttribute("hidden", "1"); rc.dirty = true; } } });
-  save(await wb.blob(), `T06_${safe(label).replace(/\s+/g, "_")}.xlsx`);
+  save(await wb.blob(), `T06_${safe(label).replace(/\s+/g, "_")}.xlsx`, "packs", label);
 });
 
 // ---------- timesheets: a T08 for each developer (step 8) ----------
@@ -611,7 +669,7 @@ $("#dlTs").addEventListener("click", async () => {
     await Timesheets.fill(wb, { name: person ? label : "", month: MONTH_NAMES[m - 1], year: y, course: [I.unit, I.course].filter(Boolean).join(" · "),
       codes: rows.map(rowCode), plos, claimUrl: ((dev.links || []).find(l => /^PDD Support Claim/i.test(l.what)) || {}).url || "",
       elements: rows.map(x => ({ code: rowCode(x), resource: x.resource, module: x.module, tool: [x.tools, x.product].filter(Boolean).join(", "), due: x.due, planned: x.days, status: x.status })) });
-    save(await wb.blob(), `${safe(person ? label : "Developer")}_Content_Developer_Timesheet_${MONTH_NAMES[m - 1].slice(0, 3)} ${y}.xlsx`);
+    save(await wb.blob(), `${safe(person ? label : "Developer")}_Content_Developer_Timesheet_${MONTH_NAMES[m - 1].slice(0, 3)} ${y}.xlsx`, "timesheets");
     say("#devMsg", `Timesheet ready for ${label}: ${rows.length} element${rows.length === 1 ? "" : "s"} in the item code list.`);
   } catch (e) { console.error(e); say("#devMsg", "The timesheet could not be made: " + (e.message || e), true); }
 });
@@ -647,7 +705,7 @@ function wireMany(drop, input, handler) {
 }
 wireMany($("#dropTs"), $("#fileTs"), loadTimesheets);
 wireDrop($("#dropTsXls"), $("#fileTsXls"), async (b, n) => {
-  try { const wb = await Workbook.load(b.slice(0)); if (!wb.has(S.rc)) throw 0; tsSheet = { buf: b, name: n }; $("#tsXlsName").textContent = "✓ " + n; $("#dropTsXls").classList.add("done"); await renderTs(); }
+  try { const wb = await Workbook.load(b.slice(0)); if (!wb.has(S.rc)) throw 0; tsSheet = { buf: b, name: n }; readLinks(wb).then(adoptLinks).catch(() => {}); $("#tsXlsName").textContent = "✓ " + n; $("#dropTsXls").classList.add("done"); await renderTs(); }
   catch (e) { $("#tsXlsName").textContent = "That file is not a Resource Creation Sheet."; $("#dropTsXls").classList.remove("done"); }
 });
 async function loadTimesheets(files) {
@@ -685,7 +743,7 @@ async function rcIndex() {
 const period = () => [Timesheets.date($("#claimFrom").value), Timesheets.date($("#claimTo").value)];
 ["#claimFrom", "#claimTo"].forEach(s => $(s).addEventListener("change", renderTs));
 async function renderTs() {
-  const on = tsList.length > 0; ["#dlClaim", "#tsClear"].forEach(s => $(s).disabled = !on);
+  const on = tsList.length > 0; ["#dlClaim", "#tsClear", "#tsWorkplan"].forEach(s => $(s).disabled = !on);
   if (!on) { $("#tsOut").innerHTML = '<p class="empty">No timesheets added yet.</p>'; $("#dlTimeLog").disabled = true; return; }
   const idx = await rcIndex().catch(() => null); const [from, to] = period();
   $("#dlTimeLog").disabled = !idx;
@@ -703,7 +761,7 @@ async function renderTs() {
       <div class="tablewrap"><table><thead><tr><th>Nr.</th><th>Support Category</th><th>Start Date</th><th>End Date</th><th>Total Minutes</th><th>Hours</th><th>Task description summary</th></tr></thead><tbody>
       ${lines.map(l => `<tr><td>${l.nr}</td><td class="copy" data-v="${esc(l.cat)}">${esc(l.cat)}${l.known ? "" : " ⚠"}</td><td class="copy" data-v="${Timesheets.iso(l.start)}">${esc(Timesheets.nice(l.start))}</td><td class="copy" data-v="${Timesheets.iso(l.end)}">${esc(Timesheets.nice(l.end))}</td><td class="copy" data-v="${l.minutes}">${l.minutes}</td><td>${hm(l.minutes)}</td><td class="copy" data-v="${esc(l.task)}">${esc(l.task)}</td></tr>`).join("") || '<tr><td colspan="7">No claimable time in this period.</td></tr>'}
       </tbody></table></div>
-      <div class="row"><button data-copy="${k}">Copy the claim lines</button><span class="small-note">Click any cell to copy just that value. Paste into the PDD Support Claim, Claim Form, from row 24.</span></div>
+      <div class="row"><button data-copy="${k}">Copy the claim lines</button><span class="small-note">Click any cell to copy just that value. The PDD Support Claim reads the workplans: use Send to the developers&#39; workplans below.</span></div>
       ${elRows ? `<details class="box"><summary>Time per element (planned vs logged)</summary><div class="tablewrap"><table><thead><tr><th>Item code</th><th>Resource</th><th>Planned</th><th>Logged</th></tr></thead><tbody>${elRows}</tbody></table></div></details>` : ""}
       ${warns.length ? `<div class="warns"><b>Check before claiming</b><ul>${warns.slice(0, 25).map(w => `<li>${esc(w)}</li>`).join("")}${warns.length > 25 ? `<li>and ${warns.length - 25} more</li>` : ""}</ul></div>` : ""}
     </div>`;
@@ -721,6 +779,36 @@ $("#tsOut").addEventListener("click", async e => {
     const tsv = Timesheets.claimLines(t.entries, from, to).map(l => [l.nr, l.cat, Timesheets.iso(l.start), Timesheets.iso(l.end), l.minutes, l.task].join("\t")).join("\n");
     const ok = await copyText(tsv); say("#tsMsg", ok ? `Claim lines for ${t.name} copied (Nr, Support Category, Start Date, End Date, Total Minutes, Task description).` : "Copy is blocked in this browser.", !ok);
   }
+});
+// sends each timesheet's month to the developer's Workplan and Time Schedule (the PDD Support Claim reads the workplans)
+function workplanGroups(t, from, to) {
+  const g = new Map();
+  t.entries.filter(x => x.cat && x.known && (from == null || (x.date != null && x.date >= from)) && (to == null || (x.date != null && x.date <= to))).forEach(x => {
+    const key = x.cat + "|" + (x.plo || ""); const o = g.get(key) || { cat: x.cat, plo: x.plo || "", minutes: 0, start: null, end: null, items: [] };
+    o.minutes += x.minutes; if (x.date != null) { o.start = o.start == null ? x.date : Math.min(o.start, x.date); o.end = o.end == null ? x.date : Math.max(o.end, x.date); }
+    const it = x.desc || x.code; if (it && !o.items.includes(it)) o.items.push(it); g.set(key, o);
+  });
+  return [...g.values()].map(o => { let task = (o.plo ? o.plo + ": " : "") + (o.items.join(", ") || "time"); if (task.length > 95) task = task.slice(0, 94) + "…";
+    return { cat: o.cat, minutes: o.minutes, task, start: Timesheets.iso(o.start), end: Timesheets.iso(o.end) }; });
+}
+function monthLabel(t) {
+  if (/^[A-Za-z]+ \d{4}$/.test(t.month || "")) return t.month;
+  const d = t.entries.map(x => x.date).filter(x => x != null).sort((p, q) => q - p)[0];
+  if (d == null) return t.month || ""; const dt = new Date(Date.UTC(1899, 11, 30) + d * 86400000);
+  return MONTH_NAMES[dt.getUTCMonth()] + " " + dt.getUTCFullYear();
+}
+$("#tsWorkplan").addEventListener("click", async () => {
+  if (!backup) { say("#tsMsg", "Connect the project's Google Drive backup first (step 1): the workplans are updated through it.", true); return; }
+  const [from, to] = period(); const manager = $("#dces").value.trim() || (dev && dev.info && dev.info.dces) || "";
+  $("#tsWorkplan").disabled = true; say("#tsMsg", "Sending to the workplans…");
+  const out = [];
+  for (const t of tsList) {
+    try {
+      const r = await backupPost({ action: "workplan", developer: t.name, month: monthLabel(t), manager, groups: workplanGroups(t, from, to) });
+      out.push(`<b>${esc(t.name)}</b> → <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.workplan)}</a>: ` + r.rows.map(x => `${esc(x.task)} (${esc(x.result)})`).join("; "));
+    } catch (e) { out.push(`<b>${esc(t.name)}</b>: ${esc(e.message || e)}`); }
+  }
+  $("#tsWorkplan").disabled = false; $("#tsMsg").innerHTML = out.join("<br>");
 });
 $("#tsClear").addEventListener("click", () => { tsList = []; $("#tsNames").textContent = ""; $("#dropTs").classList.remove("done"); say("#tsMsg", ""); renderTs(); });
 
@@ -757,7 +845,7 @@ $("#dlTimeLog").addEventListener("click", async () => {
       const t = k => M[k] ? rc.text(M[k] + r) : ""; if (!t("programme")) continue;
       const mins = byCode.get(itemCode(t("programme"), t("type"), t("source"), t("element"))); rc.setCached(M.logged + r, mins ? mins / 1440 : "");
     }
-    save(await wb.blob(), base.name.replace(/\.xlsx$/i, "") + ".xlsx");
+    save(await wb.blob(), base.name.replace(/\.xlsx$/i, "") + ".xlsx", "sheet");
     say("#tsMsg", `${fresh.length} time entr${fresh.length === 1 ? "y" : "ies"} logged in the ${S.timeLog} tab${kept.length ? ` (with ${kept.length} kept from earlier timesheets)` : ""}.` + (M.logged ? " Resource Creation shows the time logged for each element." : " This sheet has no Time logged column: use the newest blank T06 for that."));
   } catch (e) { console.error(e); say("#tsMsg", "The sheet could not be updated: " + (e.message || e), true); }
 });
@@ -770,7 +858,7 @@ $("#dlClaim").addEventListener("click", async () => {
     const lines = Timesheets.claimLines(t.entries, from, to); const total = lines.reduce((a, l) => a + l.minutes, 0);
     d.h(1, `Claim summary: ${t.name || "name not found"}`);
     d.p(`${t.month || ""}${from != null || to != null ? ` · claim period ${Timesheets.nice(from) || "start"} to ${Timesheets.nice(to) || "end"}` : ""}`, { bold: true, color: "007DBA", size: 13 });
-    d.p("These lines go into the PDD Support Claim (Claim Form, from row 24). The claim sheet works out the payment from the claimant's rate.");
+    d.p("These lines go into the developer's Workplan and Time Schedule (step 9: Send to the developers' workplans), which the PDD Support Claim reads. The claim sheet works out the payment from the claimant's rate.");
     d.table(["Nr.", "Support Category", "Start Date", "End Date", "Total Minutes", "Task description summary"],
       lines.map(l => [String(l.nr), l.cat, Timesheets.nice(l.start), Timesheets.nice(l.end), String(l.minutes), l.task]), [600, 2900, 1300, 1300, 1000, 2500]);
     d.label("Total time", `${total} minutes (${(total / 60).toFixed(2)} hours, ${hm(total)})`);
@@ -782,7 +870,7 @@ $("#dlClaim").addEventListener("click", async () => {
     d.p("Checked by DCES: ______________________________   Date: ______________");
     d.p("Timesheet: " + t.file, { italic: true, color: "5B7F95" });
   });
-  save(await d.blob("Claim summary"), `Claim_summary_${tsList.length === 1 ? safe(tsList[0].name).replace(/\s+/g, "_") : "developers"}.docx`);
+  save(await d.blob("Claim summary"), `Claim_summary_${tsList.length === 1 ? safe(tsList[0].name).replace(/\s+/g, "_") : "developers"}.docx`, "claims");
 });
 
 // ---------- reset for the next course ----------

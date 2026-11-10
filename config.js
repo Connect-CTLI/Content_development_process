@@ -1,5 +1,5 @@
 // ============================================================================
-// PDD Course Design Hub: settings
+// CTLI Design Hub: settings
 // ----------------------------------------------------------------------------
 // This is the file to edit when the rules change. Edit it on GitHub (open the
 // file, click the pencil icon, make the change, then "Commit changes"). The
@@ -87,7 +87,7 @@ var SORTER_CONFIG = {
     knownAcronyms: ["CTLI", "WCED", "PDD", "DCES", "PLO", "SME", "TBC", "QA", "LP", "URL", "PDF", "MS", "AM", "PM", "DT", "SA"],
     howToReview1: "This page lists every suggestion. In the document, added sections are tracked changes highlighted in yellow, and advice is in comments in the margin.",
     howToReview2: "In Word: Review → Next to go through each change, then Accept or Reject. Read each comment, make the change you agree with, then delete the comment.",
-    howToReview3: "When you are done, save the draft and add it to the PDD Course Design Hub as the approved draft. You can leave this page in: the Hub ignores everything before the first heading.",
+    howToReview3: "When you are done, save the draft and add it to the CTLI Design Hub as the approved draft. You can leave this page in: the Hub ignores everything before the first heading.",
     tabStarters: {
       "Course Description": ["[Welcome participants in one or two sentences: who this course is for and why it matters for their school.]", "[What participants will be able to do after the course.]", "[How long it takes and how it is delivered.]"],
       "Learning Objectives": ["By the end of this course, you will be able to:", "• [Observable action, e.g. plan …]", "• [Observable action, e.g. apply …]", "• [Observable action, e.g. evaluate …]"],

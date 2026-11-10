@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PDD Course Design Hub</title>
+<title>CTLI Design Hub</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Questrial&family=IBM+Plex+Mono:wght@500&display=swap">
 <link rel="stylesheet" href="styles.css">
@@ -12,7 +12,7 @@
 <div class="logobar"><div class="in"><img src="assets/wcg-education-logo.png" alt="Western Cape Government: Education" class="wcg-logo" width="203" height="56" onerror="if(window.LOGO_DATA&&this.src!==window.LOGO_DATA)this.src=window.LOGO_DATA"></div></div>
 <div class="brand"><div class="in"><span>CTLI • PROGRAMME DESIGN &amp; DEVELOPMENT</span><span class="steps" aria-hidden="true"><span class="on"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></div></div>
 <header class="hero"><div class="in">
-  <h1>PDD Course Design Hub</h1>
+  <h1>CTLI Design Hub</h1>
   <p>Choose the programme team and add the course draft. The Hub reviews it against UDL and the Moodle course flow for you to approve, then snippets the draft into resources, fills in the Resource Creation, Question Bank, Snippets and Design Blueprint tabs, and gives you the sheet back to download. Once the developers have chosen their elements, it makes each developer a pack of their content and a timesheet, and turns their completed timesheets into claim lines for the PDD Support Claim. Files are read in your browser and never uploaded.</p>
 </div></header>
 <main>
@@ -25,6 +25,11 @@
       <label for="unit">Unit <select id="unit"></select></label>
       <label for="coord">Programme Co-ordinator <select id="coord"></select><span class="hint">Shows the co-ordinators for the unit you choose</span></label>
       <label for="dces">DCES (project lead) <input id="dces" placeholder="Name"></label>
+    </div>
+    <div class="bkbox">
+      <label for="bkLink">Google Drive backup for this project <input id="bkLink" placeholder="Hub backup link from the project's Project Links tab (https://script.google.com/…)" autocomplete="off"></label>
+      <button id="bkCheck">Connect</button>
+      <p class="small-note" id="bkMsg">Off: downloads are saved on this computer only. Paste the project's Hub backup link (or add the project's sheet in step 4) and every download is also saved in the project's Drive folder.</p>
     </div>
     <details class="box" id="teamBox"><summary>Edit team lists and co-ordinators</summary>
       <p class="small-note">Add, rename or remove people here. Your changes are saved in this browser and written into the Data tab of every sheet the Hub fills or downloads, so the sheet's dropdowns match. To change the starting lists for the whole team, use <b>Copy the lists for GitHub</b> and paste them over <code>teams</code> in the settings.</p>
@@ -121,7 +126,7 @@
     <h2 id="s3"><span class="n">6</span> Check the snippets, then confirm</h2>
     <p class="lead">Each row is one resource with its snippet of content. Untick anything that should not go into the sheet. The type is what the draft already contains (a reading page, a Moodle activity, a table, a link). Suggested elements are ideas for the developers only: they choose what to build in the Resource Creation Sheet.</p>
     <div id="summary" class="tiles"></div>
-    <details class="box"><summary>Visual examples of the elements developers can choose</summary><div class="gallery" id="gallery"></div></details>
+    <div class="row visrow"><button id="dlVisuals">Download the visual examples</button><span class="small-note">A page showing every element developers can choose, drawn in the <b id="visPal"></b> palette. Share it with the developers, or open it and print it to PDF.</span></div>
     <h3>Course page tabs</h3>
     <div id="tabs" class="tabs"></div>
     <h3>Modules and resources</h3>
@@ -178,7 +183,7 @@
   </section>
   <section class="step" aria-labelledby="s6">
     <h2 id="s6"><span class="n">9</span> Timesheets and claims</h2>
-    <p class="lead">Add the developers' completed timesheets (T08, or the older content developer timesheet). The Hub checks them, adds up the time per support category for the <b>PDD Support Claim</b>, and logs the time against each element in the Resource Creation Sheet. Payment is still worked out in the claim sheet: the Hub carries no rates and no personal details.</p>
+    <p class="lead">Add the developers' completed timesheets (T08, or the older content developer timesheet). The Hub checks them, adds up the time per support category, logs the time against each element in the Resource Creation Sheet, and sends each developer's month to their <b>Workplan and Time Schedule</b>, which the <b>PDD Support Claim</b> reads. Payment is still worked out in the claim sheet: the Hub carries no rates and no personal details.</p>
     <div class="drops">
       <div class="drop" id="dropTs" tabindex="0" role="button">
         <span class="ic2">TIMESHEETS · .XLSX · ONE OR MORE</span>
@@ -197,9 +202,11 @@
       <label for="claimTo">Claim period to <input id="claimTo" type="date"></label>
     </div>
     <div id="tsOut"><p class="empty">No timesheets added yet.</p></div>
+    <p class="small-note" id="claimLink"></p>
     <div class="outtabs">
       <button class="primary" id="dlTimeLog" disabled>Download the Resource Creation Sheet with the time logged</button>
       <button id="dlClaim" disabled>Download the claim summary (Word)</button>
+      <button id="tsWorkplan" disabled>Send to the developers' workplans</button>
       <button id="tsClear" disabled>Clear the timesheets</button>
     </div>
     <p class="status" id="tsMsg" role="status" aria-live="polite"></p>
@@ -207,7 +214,7 @@
 </div>
 </main>
 <dialog id="tplBig"><img alt=""><p></p><button id="tplClose">Close</button></dialog>
-<footer class="foot">PDD Course Design Hub · CTLI Programme Design &amp; Development. Rules and settings live in <code>config.js</code>. <b>Version 5.6 (9 Nov 2026)</b></footer>
+<footer class="foot">CTLI Design Hub · CTLI Programme Design &amp; Development. Rules and settings live in <code>config.js</code>. <b>Version 6.0 (10 Nov 2026)</b></footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="files.js"></script>

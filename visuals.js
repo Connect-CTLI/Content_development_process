@@ -1,4 +1,4 @@
-// PDD Course Design Hub: small visual examples of each kind of element, drawn in the chosen palette.
+// CTLI Design Hub: small visual examples of each kind of element, drawn in the chosen palette.
 // Add or change a drawing by editing the matching entry below (SVG, 120 x 76).
 const VISUALS = (() => {
   const N = "#001489", G = "#A6BBC8", W = "#FFFFFF", L = "#EEF2F6";
