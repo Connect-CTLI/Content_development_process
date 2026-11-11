@@ -813,7 +813,8 @@ $("#dlTs").addEventListener("click", async () => {
   try {
     const rows = devRows(); const label = whoLabel(); const person = !$("#devSel").value.startsWith("__"); const I = dev.info || {};
     const [y, m] = ($("#tsMonth").value || new Date().toISOString().slice(0, 7)).split("-").map(Number);
-    const plos = uniq(rows.map(x => x.prog));   // the PLO only (Resource Creation column B), not the course name
+    const cname = String(I.course || "").replace(/^\s*course\s+draft\s*[:\-–]\s*/i, "").trim();
+    const plos = uniq(rows.map(x => [x.prog, cname].filter(Boolean).join(" ")));   // PLO code and course name, e.g. "LS Leading Self"
     const wb = await Workbook.load(await t08Buf());
     await Timesheets.fill(wb, { name: person ? label : "", month: MONTH_NAMES[m - 1], year: y, course: [I.unit, I.course].filter(Boolean).join(" · "),
       codes: rows.map(rowCode), plos, claimUrl: ((dev.links || []).find(l => /^PDD Support Claim/i.test(l.what)) || {}).url || "",
@@ -933,7 +934,7 @@ $("#tsOut").addEventListener("click", async e => {
 function workplanGroups(t, from, to) {
   const g = new Map();
   t.entries.filter(x => x.cat && x.known && (from == null || (x.date != null && x.date >= from)) && (to == null || (x.date != null && x.date <= to))).forEach(x => {
-    const key = x.cat + "|" + (x.plo || ""); const o = g.get(key) || { cat: x.cat, plo: x.plo || "", minutes: 0, start: null, end: null, items: [] };
+    const plo = String(x.plo || "").replace(/^\s*course\s+draft\s*[:\-–]\s*/i, "").trim(); const key = x.cat + "|" + plo; const o = g.get(key) || { cat: x.cat, plo, minutes: 0, start: null, end: null, items: [] };
     o.minutes += x.minutes; if (x.date != null) { o.start = o.start == null ? x.date : Math.min(o.start, x.date); o.end = o.end == null ? x.date : Math.max(o.end, x.date); }
     const it = x.desc || x.code; if (it && !o.items.includes(it)) o.items.push(it); g.set(key, o);
   });
