@@ -84,8 +84,16 @@ var SORTER_CONFIG = {
   review: {
     author: "Learning design review",
     limits: { topicWords: 450, paragraphWords: 120, sentenceWords: 25 },
-    knownAcronyms: ["CTLI", "WCED", "PDD", "DCES", "PLO", "SME", "TBC", "QA", "LP", "URL", "PDF", "MS", "AM", "PM", "DT", "SA"],
-    howToReview1: "This page lists every suggestion. In the document, added sections are tracked changes highlighted in yellow, and advice is in comments in the margin.",
+    knownAcronyms: ["CTLI", "WCED", "PDD", "DCES", "PLO", "SME", "TBC", "QA", "LP", "URL", "PDF", "MS", "AM", "PM", "DT", "SA", "KB", "MB", "GB", "OK"],
+    // used to write an acronym in full the first time it appears (add more as needed)
+    acronymExpansions: { SMT: "School Management Team", SGB: "School Governing Body", HOD: "Head of Department", LTSM: "Learning and Teaching Support Material", SBA: "School-Based Assessment",
+      CAPS: "Curriculum and Assessment Policy Statement", IQMS: "Integrated Quality Management System", PLC: "Professional Learning Community", SACE: "South African Council for Educators",
+      CPTD: "Continuing Professional Teacher Development", DBE: "Department of Basic Education", UDL: "Universal Design for Learning", EHWP: "Employee Health and Wellness Programme",
+      SWOT: "Strengths, Weaknesses, Opportunities and Threats", SMART: "Specific, Measurable, Achievable, Relevant and Time-bound", EQ: "emotional intelligence", MBTI: "Myers-Briggs Type Indicator",
+      BAL: "Being a Leader", SIP: "School Improvement Plan", FP: "Foundation Phase", IP: "Intermediate Phase", SP: "Senior Phase", FET: "Further Education and Training", ISP: "Intersen and Senior Phase",
+      IE: "Inclusive Education", TPI: "Teacher Practice Improvement", ICT: "information and communication technology", AI: "artificial intelligence", LMS: "learning management system",
+      ECD: "Early Childhood Development", WCG: "Western Cape Government", COO: "Chief Operating Officer", SCORM: "Sharable Content Object Reference Model", PGCE: "Postgraduate Certificate in Education", QMS: "Quality Management System", CPD: "continuing professional development", SDP: "School Development Plan" },
+    howToReview1: "This page lists every suggestion and what was chosen in the CTLI Design Hub. In the document, added and rewritten text is a tracked change highlighted in yellow, and advice is in comments in the margin.",
     howToReview2: "In Word: Review → Next to go through each change, then Accept or Reject. Read each comment, make the change you agree with, then delete the comment.",
     howToReview3: "When you are done, save the draft and add it to the CTLI Design Hub as the approved draft. You can leave this page in: the Hub ignores everything before the first heading.",
     tabStarters: {

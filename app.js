@@ -149,7 +149,62 @@ figure svg{width:100%;height:auto;display:block;border-radius:8px}figcaption b{d
 <div class="grid">${cards}</div></main></body></html>`;
 }
 gallery(); $("#pal").addEventListener("change", () => { gallery(); tplStrip(); if (model) render(); });
-$("#dlVisuals").addEventListener("click", () => { const name = $("#pal").value || CFG.palettes[0][0]; save(new Blob([visualsPage()], { type: "text/html" }), `CTLI_Visual_examples_${safe(name.split(/\s+/)[0])}.html`, "B"); });
+// the visual examples as an A4 PDF, WCG Education logo top left (jsPDF loads only when needed)
+const loadScript = src => new Promise((ok, no) => { if ([...document.scripts].some(s => s.src === src)) return ok(); const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => no(new Error("could not load " + src)); document.head.appendChild(s); });
+const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
+async function visualsPdf() {
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  try { await document.fonts.ready; } catch (e) {}
+  const name = $("#pal").value || CFG.palettes[0][0]; const { p, h } = colours();
+  const logoEl = document.querySelector(".wcg-logo"); const logo = await loadImg(window.LOGO_DATA || (logoEl && logoEl.src)).catch(() => null);
+  const pics = await Promise.all(VISUALS.codes.map(c => loadImg("data:image/svg+xml;charset=utf-8," + encodeURIComponent(VISUALS.svg(c, p, h, esc("Example of " + (NAME[c] || c))))).catch(() => null)));
+  const { jsPDF } = window.jspdf; const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const W = 210, H = 297, K = 6, M = 12, cols = 3, gap = 6, cw = (W - 2 * M - gap * (cols - 1)) / cols, ih = cw * 76 / 120;
+  const FONT = '"Century Gothic", Questrial, "Avenir Next", Arial, sans-serif';
+  const wrap = (ctx, text, max) => { const out = []; let line = ""; String(text).split(/\s+/).forEach(w => { const t = line ? line + " " + w : w; if (ctx.measureText(t).width > max && line) { out.push(line); line = w; } else line = t; }); if (line) out.push(line); return out; };
+  let page = 0, ctx = null, cv = null, y = 0;
+  const startPage = () => {
+    cv = document.createElement("canvas"); cv.width = W * K; cv.height = H * K; ctx = cv.getContext("2d"); ctx.scale(K, K);
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+    if (logo) { const lh = 13, lw = lh * logo.width / logo.height; ctx.drawImage(logo, M, 9, lw, lh); }
+    ctx.fillStyle = "#007DBA"; ctx.font = `bold 2.6px ${FONT}`; ctx.textAlign = "right"; ctx.fillText("CTLI • PROGRAMME DESIGN & DEVELOPMENT", W - M, 13); ctx.fillText("CTLI DESIGN HUB", W - M, 16.5); ctx.textAlign = "left";
+    ctx.strokeStyle = "#d7dee8"; ctx.lineWidth = 0.3; ctx.beginPath(); ctx.moveTo(M, 26); ctx.lineTo(W - M, 26); ctx.stroke();
+    y = 33;
+    if (page === 0) {
+      ctx.fillStyle = "#001489"; ctx.font = `bold 6.2px ${FONT}`; ctx.fillText("Visual examples of the elements developers can choose", M, y); y += 7;
+      ctx.fillStyle = p; ctx.fillRect(M, y - 3.2, 4, 4); ctx.fillStyle = h; ctx.fillRect(M + 5, y - 3.2, 4, 4);
+      ctx.fillStyle = "#14204a"; ctx.font = `bold 3.4px ${FONT}`; ctx.fillText(`${name} palette`, M + 11, y); y += 5.5;
+      ctx.fillStyle = "#55607e"; ctx.font = `3px ${FONT}`;
+      wrap(ctx, "Developers choose what to build in the Resource Creation Sheet; these show what each element can look like in this palette. Build from the Canva master templates (T07).", W - 2 * M).forEach(l => { ctx.fillText(l, M, y); y += 4.2; });
+      y += 3;
+    }
+    page++;
+  };
+  const endPage = () => { ctx.fillStyle = "#8a96a8"; ctx.font = `2.6px ${FONT}`; ctx.textAlign = "right"; ctx.fillText(`Page ${page}`, W - M, H - 8); ctx.textAlign = "left"; ctx.fillText(`Visual examples · ${name}`, M, H - 8);
+    if (page > 1) pdf.addPage(); pdf.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, W, H); };
+  startPage();
+  const cardH = c => { ctx.font = `3px ${FONT}`; return ih + 4 + 4.5 + wrap(ctx, VISUALS.about(c), cw - 4).slice(0, 4).length * 3.8 + 4; };
+  for (let i = 0; i < VISUALS.codes.length; i += cols) {
+    const row = VISUALS.codes.slice(i, i + cols); const rh = Math.max(...row.map(cardH));
+    if (y + rh > H - 14) { endPage(); startPage(); }
+    row.forEach((c, k) => {
+      const x = M + k * (cw + gap);
+      ctx.strokeStyle = "#d7dee8"; ctx.lineWidth = 0.3; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, cw, rh - 2, 2.5); else ctx.rect(x, y, cw, rh - 2); ctx.stroke();
+      const pic = pics[VISUALS.codes.indexOf(c)]; if (pic) ctx.drawImage(pic, x + 2, y + 2, cw - 4, ih - 2);
+      let ty = y + ih + 4.5; ctx.fillStyle = "#14204a"; ctx.font = `bold 3.3px ${FONT}`; ctx.fillText(`${c} · ${NAME[c] || c}`, x + 2, ty); ty += 4.5;
+      ctx.fillStyle = "#55607e"; ctx.font = `3px ${FONT}`; wrap(ctx, VISUALS.about(c), cw - 4).slice(0, 4).forEach(l => { ctx.fillText(l, x + 2, ty); ty += 3.8; });
+    });
+    y += rh + 2;
+  }
+  endPage();
+  return pdf.output("blob");
+}
+$("#dlVisuals").addEventListener("click", async () => {
+  const name = $("#pal").value || CFG.palettes[0][0]; const b = $("#dlVisuals"); const was = b.textContent; b.disabled = true; b.textContent = "Making the PDF…";
+  try { save(await visualsPdf(), `CTLI_Visual_examples_${safe(name.split(/\s+/)[0])}.pdf`, "B"); }
+  catch (e) { console.error(e); save(new Blob([visualsPage()], { type: "text/html" }), `CTLI_Visual_examples_${safe(name.split(/\s+/)[0])}.html`, "B"); }
+  finally { b.disabled = false; b.textContent = was; }
+});
 
 // ---------- loading files ----------
 function wireDrop(drop, input, handler) {
@@ -233,8 +288,8 @@ let review = null, udlFilter = "All";
 async function loadOriginal(buf, name, isExample) {
   try {
     $("#origName").textContent = "Reviewing…";
-    const r = await UDLReview.review(buf.slice(0)); const acc = await UDLReview.review(buf.slice(0), { accepted: true });
-    review = { name, buf: buf.slice(0), reviewed: r.file, accepted: acc.file, suggestions: r.suggestions, modules: r.modules };
+    const r = await UDLReview.review(buf.slice(0));
+    review = { name, buf: buf.slice(0), suggestions: r.suggestions, modules: r.modules, choices: {} };
     $("#origName").textContent = (isExample ? "Example: " : "✓ ") + name; $("#dropOrig").classList.add("done");
     ["#dlReviewed", "#dlAccepted", "#useAccepted", "#useOriginal"].forEach(id => { $(id).disabled = false; });
     udlFilter = "All"; renderReview();
@@ -242,29 +297,61 @@ async function loadOriginal(buf, name, isExample) {
   } catch (e) { console.error(e); $("#origName").textContent = "That file could not be read as a Word document. Save it as .docx and try again."; $("#dropOrig").classList.remove("done"); }
 }
 const pslug = p => p.toLowerCase().replace(/[^a-z]+/g, "-");
+// what the DCES picked for each suggestion: a ready-made option (0, 1 …), "own", "comment" or "skip"
+const pickOf = x => { const c = review.choices[x.id]; return c ? c.pick : (x.options.length ? 0 : "comment"); };
+const OWN_HINT = { insert: "Write your own text. Each line becomes a paragraph in the draft.", replace: "Write the paragraph as it should read.", relabel: "Write the link text, e.g. Watch the video on effective feedback.",
+  alt: "Describe what the image shows.", wrap: "Write the term in full, e.g. School Management Team.", header: "Write the sentence that introduces the table.", comment: "Write your own advice: it goes in the margin as a comment." };
+function reviewCounts() { const sg = review.suggestions; const ch = sg.filter(x => { const p = pickOf(x); return typeof p === "number" || (p === "own" && (review.choices[x.id].own || "").trim() && x.ownKind !== "comment"); }).length;
+  const sk = sg.filter(x => pickOf(x) === "skip").length; $("#udlCount").textContent = `${ch} change${ch === 1 ? "" : "s"} will be made in the draft · ${sg.length - ch - sk} as comments · ${sk} left out`; }
 function renderReview() {
   if (!review) return;
   const sg = review.suggestions; const count = p => sg.filter(x => x.principle === p).length;
   $("#udlTiles").innerHTML = [["Suggestions", sg.length], ...PRINCIPLES.map(p => [p, count(p)])].map(([l, v], i) => `<div class="tile ${i ? "udl-" + pslug(l) : ""}"><b>${v}</b><span>${esc(l)}</span></div>`).join("");
   $("#udlChips").innerHTML = ["All", ...PRINCIPLES].map(p => `<button class="chip ${p === udlFilter ? "on" : ""}" data-p="${esc(p)}" aria-pressed="${p === udlFilter}">${esc(p)}${p === "All" ? "" : " · " + count(p)}</button>`).join("");
   const list = sg.filter(x => udlFilter === "All" || x.principle === udlFilter);
-  $("#udlList").innerHTML = list.length ? list.map(x => `<div class="udl-row">
+  $("#udlList").innerHTML = list.length ? list.map(x => { const pick = pickOf(x); const own = (review.choices[x.id] || {}).own || "";
+    const radio = (val, label, body) => `<label class="udl-opt${String(pick) === String(val) ? " on" : ""}"><input type="radio" name="c${x.id}" value="${val}" ${String(pick) === String(val) ? "checked" : ""}><span><b>${esc(label)}</b>${body || ""}</span></label>`;
+    return `<div class="udl-row" data-id="${x.id}">
     <div class="udl-orig"><span class="udl-k">Original · ${esc(x.where)}</span><p>${esc(x.original || "")}</p></div>
-    <div class="udl-sugg udl-${pslug(x.principle)}"><span class="udl-k"><span class="pchip udl-${pslug(x.principle)}">${esc(x.principle)}</span> ${esc(x.how)}</span>
+    <div class="udl-sugg udl-${pslug(x.principle)}"><span class="udl-k"><span class="pchip udl-${pslug(x.principle)}">${esc(x.principle)}</span> #${x.id}</span>
       <p><b>${esc(x.title)}.</b> ${esc(x.detail)}</p>
-      ${x.insert ? `<div class="udl-ins">${x.insert.map(i => `<mark${i.style ? ' class="h"' : ""}>${esc(i.text)}</mark>`).join("<br>")}</div>` : ""}</div></div>`).join("")
+      <div class="udl-opts" role="radiogroup" aria-label="What to do with suggestion ${x.id}">
+        ${x.options.map((o, i) => radio(i, o.label, `<mark class="udl-prev">${esc(o.preview).replace(/\n/g, "<br>")}</mark>`)).join("")}
+        ${radio("own", x.ownKind === "comment" ? "My own advice" : "My own version", `<textarea rows="3" data-own="${x.id}" placeholder="${esc(OWN_HINT[x.ownKind] || OWN_HINT.insert)}">${esc(own)}</textarea>`)}
+        ${radio("comment", "Comment in the margin only")}
+        ${radio("skip", "Leave it out")}
+      </div></div></div>`; }).join("")
     : '<p class="empty">No suggestions for this principle.</p>';
+  reviewCounts();
 }
 $("#udlChips").addEventListener("click", e => { const b = e.target.closest(".chip"); if (!b) return; udlFilter = b.dataset.p; renderReview(); });
+$("#udlList").addEventListener("change", e => {
+  const r = e.target.closest("input[type=radio]"); if (!r || !review) return; const id = +r.closest(".udl-row").dataset.id;
+  const c = review.choices[id] || {}; c.pick = /^\d+$/.test(r.value) ? +r.value : r.value; review.choices[id] = c;
+  r.closest(".udl-opts").querySelectorAll(".udl-opt").forEach(l => l.classList.toggle("on", l.contains(r)));
+  if (c.pick === "own") { const ta = r.closest(".udl-opt").querySelector("textarea"); if (ta) ta.focus(); }
+  reviewCounts();
+});
+$("#udlList").addEventListener("input", e => {
+  const ta = e.target.closest("textarea[data-own]"); if (!ta || !review) return; const id = +ta.dataset.own;
+  const c = review.choices[id] || {}; c.own = ta.value; c.pick = "own"; review.choices[id] = c;
+  const r = ta.closest(".udl-opt").querySelector("input"); if (!r.checked) { r.checked = true; ta.closest(".udl-opts").querySelectorAll(".udl-opt").forEach(l => l.classList.toggle("on", l.contains(r))); }
+  reviewCounts();
+});
+document.addEventListener("click", e => { const b = e.target.closest("[data-allpick]"); if (!b || !review) return;
+  review.suggestions.forEach(x => { if (b.dataset.allpick === "options") review.choices[x.id] = { pick: x.options.length ? 0 : "comment", own: (review.choices[x.id] || {}).own };
+    else review.choices[x.id] = { pick: "comment", own: (review.choices[x.id] || {}).own }; }); renderReview(); });
 function resetReview() {
   review = null; $("#origName").textContent = ""; $("#dropOrig").classList.remove("done");
-  $("#udlTiles").innerHTML = ""; $("#udlChips").innerHTML = ""; $("#udlList").innerHTML = '<p class="empty">Add a course draft in step 2.</p>';
+  $("#udlTiles").innerHTML = ""; $("#udlChips").innerHTML = ""; $("#udlList").innerHTML = '<p class="empty">Add a course draft in step 2.</p>'; $("#udlCount").textContent = "";
   ["#dlReviewed", "#dlAccepted", "#useAccepted", "#useOriginal"].forEach(id => { $(id).disabled = true; });
 }
 const baseName = n => String(n || "course_draft").replace(/\.docx$/i, "").replace(/[\\/:*?"<>|]+/g, "-");
-$("#dlReviewed").addEventListener("click", () => review && save(review.reviewed, baseName(review.name) + "_learning_design_review.docx", "A"));
-$("#dlAccepted").addEventListener("click", () => review && save(new Blob([review.accepted], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }), baseName(review.name) + "_all_suggestions.docx", "A"));
-$("#useAccepted").addEventListener("click", () => review && loadDoc(review.accepted.slice(0), baseName(review.name) + " (every suggestion accepted)"));
+const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+async function reviewed(accepted) { const r = await UDLReview.review(review.buf.slice(0), { accepted, choices: review.choices }); return r.file; }
+$("#dlReviewed").addEventListener("click", async () => review && save(await reviewed(false), baseName(review.name) + "_learning_design_review.docx", "A"));
+$("#dlAccepted").addEventListener("click", async () => review && save(new Blob([await reviewed(true)], { type: DOCX }), baseName(review.name) + "_with_changes.docx", "A"));
+$("#useAccepted").addEventListener("click", async () => review && loadDoc(await reviewed(true), baseName(review.name) + " (with the chosen changes)"));
 $("#useOriginal").addEventListener("click", () => review && loadDoc(review.buf.slice(0), baseName(review.name) + " (original)"));
 
 // ---------- items ----------

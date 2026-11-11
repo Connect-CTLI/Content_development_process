@@ -220,3 +220,14 @@ html, body { overflow-x: clip }
   header.hero h1 { font-size: 24px }
 }
 @media (min-width: 641px) and (max-width: 1023px) { .setup { grid-template-columns: 1fr 1fr } }
+
+/* ---- review options ---- */
+.udl-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin: 8px 0 }
+.udl-all { display: flex; flex-wrap: wrap; gap: 6px } .udl-all button { font-size: 13px; padding: 6px 10px; min-height: 36px }
+.udl-opts { display: grid; gap: 6px; margin-top: 10px }
+.udl-opt { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--panel); cursor: pointer; font-size: 14px }
+.udl-opt.on { border-color: var(--navy, #001489); box-shadow: 0 0 0 1px var(--navy, #001489) inset }
+.udl-opt input[type=radio] { margin-top: 3px; accent-color: #001489 }
+.udl-opt b { display: block; font-size: 13.5px; margin-bottom: 3px }
+.udl-prev { display: block; background: #fff4b8; color: #14204a; padding: 6px 8px; border-radius: 6px; font-size: 13px; line-height: 1.45; white-space: normal }
+.udl-opt textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 13.5px; padding: 7px 8px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); resize: vertical; min-height: 64px }

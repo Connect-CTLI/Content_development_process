@@ -36,7 +36,7 @@ The Hub has three tabs at the top: **Draft and review** (steps 1–4), **Build t
 
      Changes are saved in your browser and written into the Data tab of every sheet the Hub fills or downloads.
 2. **Add the original course draft.** The Hub runs a learning design review against Universal Design for Learning (engagement, representation, action and expression), accessibility and the CTLI Moodle course flow.
-3. **Learning design review:** each suggestion is shown beside the original text. **Download the reviewed draft (Word):** added sections are tracked changes highlighted in yellow and advice is in comments in the margin. Accept or reject each one in Word.
+3. **Learning design review:** each suggestion is shown beside the original text, most with ready-made text written from the draft (a welcome, outcomes from the topics, takeaways, a knowledge check, a rewritten objective, a split paragraph, an acronym written in full, link text, a table introduction). For each one, choose a ready-made option, write **your own version**, keep it as a **comment** only, or **leave it out**. **Download the reviewed draft (Word):** the chosen changes are tracked changes highlighted in yellow and the rest are comments in the margin. **Download with the chosen changes made** gives the clean draft. The wording of the ready-made text and the acronym list are in `config.js` → `review`.
 4. **Add the approved draft** (or use the draft with every suggestion accepted, or the original as it is). To fill an existing T06 instead of the blank one, drop it in the sheet box.
 5. **Course set-up:**
    - **Course code:** `Programme_MainSource`, for example `LP3_Comp2`. Item codes come out as `LP3Text_Comp2.1.2`.
@@ -90,7 +90,7 @@ Open a file on github.com, click the **pencil** icon, edit, then click **Commit 
 | The Canva template pictures for each palette | `thumbs.js` (all the pictures in one file; the kinds are listed in `config.js` → `templateKinds`) |
 | Wording on the page | `index.html` |
 | Colours and layout | `styles.css` |
-| The visual examples | `visuals.js` |
+| The visual examples (step 6 downloads them as a PDF with the WCG Education logo) | `visuals.js` |
 | The blank T06 | create a `templates` folder and upload `T06_Resource_Creation_Sheet.xlsx` into it: the Hub uses it instead of its built-in copy in `files.js` |
 | The example draft | upload a new `examples/sample-course-draft.docx` |
 

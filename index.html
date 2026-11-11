@@ -61,13 +61,14 @@
 
   <section class="step" aria-labelledby="sR">
     <h2 id="sR"><span class="n">3</span> Learning design review</h2>
-    <p class="lead">Each suggestion shows the original on the left and the suggested change on the right. Download the reviewed draft to see them in Word: added sections are tracked changes highlighted in yellow, and advice is in comments in the margin. Accept or reject each one, then add the approved draft in step 4.</p>
+    <p class="lead">Each suggestion shows the original on the left and what to do on the right. Most come with ready-made text written from the draft: pick one, write <b>your own version</b>, keep it as a <b>comment</b> only, or <b>leave it out</b>. The draft is then made with your choices: download the reviewed draft to see them in Word as tracked changes (highlighted) and comments, or download it with the changes already made. Then add the approved draft in step 4.</p>
     <div id="udlTiles" class="tiles"></div>
     <div class="chips" id="udlChips" role="group" aria-label="Show suggestions for"></div>
+    <div class="udl-bar"><span id="udlCount" class="small-note"></span><span class="udl-all"><button data-allpick="options">Use the first ready-made option everywhere</button><button data-allpick="comment">Make everything a comment</button></span></div>
     <div id="udlList" class="udl-list"><p class="empty">Add a course draft in step 2.</p></div>
     <div class="outtabs" style="margin-top:12px">
       <button class="primary" id="dlReviewed" disabled>Download the reviewed draft (Word)</button>
-      <button id="dlAccepted" disabled>Download with every suggestion accepted (Word)</button>
+      <button id="dlAccepted" disabled>Download with the chosen changes made (Word)</button>
     </div>
     <details class="box"><summary>What the review checks</summary>
       <ul class="small-note" style="margin:8px 0 0">
@@ -82,7 +83,7 @@
 
   <section class="step" aria-labelledby="sA">
     <h2 id="sA"><span class="n">4</span> Add the approved draft</h2>
-    <p class="lead">Add the draft after you have accepted or rejected the suggestions in Word. You can also use the draft with every suggestion accepted, or the original as it is. The blank Resource Creation Sheet (T06) is already loaded; to fill an existing sheet, drop it in instead.</p>
+    <p class="lead">Add the draft after you have checked the changes in Word. You can also use the draft with the changes chosen in step 3, or the original as it is. The blank Resource Creation Sheet (T06) is already loaded; to fill an existing sheet, drop it in instead.</p>
     <div class="drops">
       <div class="drop" id="dropDoc" tabindex="0" role="button" aria-describedby="docHelp">
         <span class="ic2">APPROVED COURSE DRAFT · .DOCX</span>
@@ -99,7 +100,7 @@
     </div>
     <input type="file" id="fileDoc" accept=".docx" hidden>
     <input type="file" id="fileXls" accept=".xlsx" hidden>
-    <div class="row"><button id="useAccepted" disabled>Use the draft with every suggestion accepted</button><button id="useOriginal" disabled>Use the original draft as it is</button><button id="blankBtn">Use the blank template</button><button id="dlBlank">Download the blank template</button></div>
+    <div class="row"><button id="useAccepted" disabled>Use the draft with the chosen changes</button><button id="useOriginal" disabled>Use the original draft as it is</button><button id="blankBtn">Use the blank template</button><button id="dlBlank">Download the blank template</button></div>
   </section>
 
   <div class="tabnext"><button type="button" class="primary" data-goto="tabB">Next: Build the sheet (steps 5–7) →</button></div>
@@ -126,7 +127,7 @@
     <h2 id="s3"><span class="n">6</span> Check the snippets, then confirm</h2>
     <p class="lead">Each row is one resource with its snippet of content. Untick anything that should not go into the sheet. The type is what the draft already contains (a reading page, a Moodle activity, a table, a link). Suggested elements are ideas for the developers only: they choose what to build in the Resource Creation Sheet.</p>
     <div id="summary" class="tiles"></div>
-    <div class="row visrow"><button id="dlVisuals">Download the visual examples</button><span class="small-note">A page showing every element developers can choose, drawn in the <b id="visPal"></b> palette. Share it with the developers, or open it and print it to PDF.</span></div>
+    <div class="row visrow"><button id="dlVisuals">Download the visual examples (PDF)</button><span class="small-note">A PDF showing every element developers can choose, drawn in the <b id="visPal"></b> palette, with the WCG Education logo. Share it with the developers.</span></div>
     <h3>Course page tabs</h3>
     <div id="tabs" class="tabs"></div>
     <h3>Modules and resources</h3>
@@ -214,7 +215,7 @@
 </div>
 </main>
 <dialog id="tplBig"><img alt=""><p></p><button id="tplClose">Close</button></dialog>
-<footer class="foot">CTLI Design Hub · CTLI Programme Design &amp; Development. Rules and settings live in <code>config.js</code>. <b>Version 6.0 (10 Nov 2026)</b></footer>
+<footer class="foot">CTLI Design Hub · CTLI Programme Design &amp; Development. Rules and settings live in <code>config.js</code>. <b>Version 6.1 (11 Nov 2026)</b></footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="files.js"></script>
