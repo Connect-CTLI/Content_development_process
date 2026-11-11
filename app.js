@@ -566,8 +566,12 @@ const safe = s => String(s || "").replace(/[\\/:*?"<>|]+/g, "-").trim();
 let backup = null;
 const BK = "ctliHubBackup";
 function bkSay(html, on) { $("#bkMsg").innerHTML = html; document.querySelector(".bkbox").classList.toggle("on", !!on); }
+// a Google Workspace link (script.google.com/a/<domain>/macros/… or /a/macros/<domain>/…) asks for a sign-in,
+// which a page outside the domain cannot do; the plain /macros/s/… form of the same web app does not
+const plainLink = u => String(u || "").trim().replace(/^https:\/\/script\.google\.com\/a\/(?:macros\/)?[^\/]+\/(?:macros\/)?s\//i, "https://script.google.com/macros/s/");
 async function checkBackup(url) {
-  url = String(url || "").trim();
+  url = plainLink(url);
+  if (url && $("#bkLink").value.trim() !== url) $("#bkLink").value = url;
   if (!url) { backup = null; bkSay("Off: downloads are saved on this computer only. Paste the project's Hub backup link (or add the project's sheet in step 4) and every download is also saved in the project's Drive folder."); try { localStorage.removeItem(BK); } catch (e) {} return; }
   if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(url) || !/[?&]k=/.test(url) || !/[?&]f=/.test(url)) { backup = null; bkSay("That is not a Hub backup link. Copy it from the Hub backup link row of the project's Project Links tab."); return; }
   bkSay("Connecting…");
@@ -581,7 +585,7 @@ async function checkBackup(url) {
 }
 function adoptLinks(links) {
   const hub = (links || []).find(l => /^Hub backup link/i.test(l.what));
-  if (hub && hub.url !== $("#bkLink").value.trim()) { $("#bkLink").value = hub.url; checkBackup(hub.url); }
+  if (hub && plainLink(hub.url) !== $("#bkLink").value.trim()) { $("#bkLink").value = plainLink(hub.url); checkBackup(hub.url); }
   const claim = (links || []).find(l => /^PDD Support Claim/i.test(l.what));
   if (claim) $("#claimLink").innerHTML = `<a href="${esc(claim.url)}" target="_blank" rel="noopener">Open the PDD Support Claim →</a> The claim reads the developers' workplans, so send the timesheets to the workplans first.`;
 }
