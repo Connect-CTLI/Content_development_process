@@ -569,6 +569,46 @@ function bkSay(html, on) { $("#bkMsg").innerHTML = html; document.querySelector(
 // a Google Workspace link (script.google.com/a/<domain>/macros/… or /a/macros/<domain>/…) asks for a sign-in,
 // which a page outside the domain cannot do; the plain /macros/s/… form of the same web app does not
 const plainLink = u => String(u || "").trim().replace(/^https:\/\/script\.google\.com\/a\/(?:macros\/)?[^\/]+\/(?:macros\/)?s\//i, "https://script.google.com/macros/s/");
+// Two ways in. Direct: the web app answers anyone (Who has access: Anyone, and the organisation allows it).
+// Signed-in bridge: when the organisation keeps the web app to its own users (as wced.info does), the Hub opens the
+// web app inside the page (or in a small window) as the signed-in user, and passes each save to it with postMessage.
+let bridge = null, bridgeWin = null, bridgeTimer = null, bridgeSeq = 0;
+const bridgeWait = new Map();
+const fromGoogle = o => /^https:\/\/([a-z0-9-]+\.)*(googleusercontent|google)\.com$/i.test(o);
+window.addEventListener("message", e => {
+  const d = e.data; if (!d || typeof d !== "object" || !d.ctliHub || !fromGoogle(e.origin)) return;
+  if (d.ctliHub === "ready") {
+    clearTimeout(bridgeTimer);
+    if (!d.ok) { backup = null; bkSay("The project's Drive folder said no: " + esc(d.error || "not allowed") + "."); return; }
+    bridge = { win: e.source, origin: e.origin };
+    backup = { url: pendingUrl, project: d.project, folder: d.url, via: "bridge" };
+    try { localStorage.setItem(BK, pendingUrl); } catch (x) {}
+    bkSay(`On: every download is also saved in <a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.project)}</a> in Google Drive (signed in as you${bridgeWin ? "; keep the small Drive window open" : ""}).`, true);
+  } else if (d.ctliHub === "result" && bridgeWait.has(d.id)) {
+    const w = bridgeWait.get(d.id); bridgeWait.delete(d.id); w(d.result || { ok: false, error: "no answer" });
+  }
+});
+let pendingUrl = "";
+function bridgeUrl(url) { return url + (url.includes("?") ? "&" : "?") + "mode=bridge"; }
+function startBridge(url) {
+  pendingUrl = url; bridge = null;
+  let fr = document.getElementById("bkFrame");
+  if (!fr) { fr = document.createElement("iframe"); fr.id = "bkFrame"; fr.title = "Google Drive connection"; fr.style.cssText = "position:absolute;width:1px;height:1px;border:0;left:-9999px;top:0"; document.body.appendChild(fr); }
+  fr.src = bridgeUrl(url);
+  bkSay("Connecting through your Google sign-in…");
+  clearTimeout(bridgeTimer);
+  bridgeTimer = setTimeout(() => {
+    if (bridge) return;
+    bkSay('Almost there: this browser keeps Google sign-ins out of other sites, so the Drive connection needs its own small window. <button type="button" id="bkOpen" class="primary">Open the Drive connection</button> Sign in with your work account if Google asks, then leave that window open while you work.');
+    const b = document.getElementById("bkOpen"); if (b) b.onclick = () => {
+      bridgeWin = window.open(bridgeUrl(url), "ctliDrive", "width=460,height=360");
+      if (!bridgeWin) { bkSay("The browser blocked the small window. Allow pop-ups for this page, then click Connect again."); return; }
+      bkSay("Waiting for the Drive connection window…");
+      clearTimeout(bridgeTimer);
+      bridgeTimer = setTimeout(() => { if (!bridge) bkSay("The Drive connection window did not answer. Check it shows your project's name; if it says the file does not exist, sign in there with the account that owns the master T06. Then click Connect again."); }, 45000);
+    };
+  }, 9000);
+}
 async function checkBackup(url) {
   url = plainLink(url);
   if (url && $("#bkLink").value.trim() !== url) $("#bkLink").value = url;
@@ -578,10 +618,13 @@ async function checkBackup(url) {
   try {
     const r = await fetch(url, { cache: "no-store" }).then(x => x.json());
     if (!r.ok) throw new Error(r.error || "not allowed");
-    backup = { url, project: r.project, folder: r.url };
+    backup = { url, project: r.project, folder: r.url, via: "direct" };
     bkSay(`On: every download is also saved in <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.project)}</a> in Google Drive.`, true);
     try { localStorage.setItem(BK, url); } catch (e) {}
-  } catch (e) { backup = null; bkSay("Could not connect to the project's Drive folder: " + esc(e.message || e) + ". Check the link, and that the PDD tools web app is deployed (Who has access: Anyone)."); }
+  } catch (e) {
+    if (/not valid|not a project/i.test(String(e.message))) { backup = null; bkSay("Could not connect: " + esc(e.message) + "."); return; }
+    backup = null; startBridge(url);   // the organisation keeps the web app to signed-in users: go through the sign-in
+  }
 }
 function adoptLinks(links) {
   const hub = (links || []).find(l => /^Hub backup link/i.test(l.what));
@@ -596,7 +639,13 @@ async function readLinks(wb) {
 }
 const b64 = blob => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = no; r.readAsDataURL(blob); });
 async function backupPost(body) {
-  const r = await fetch(backup.url, { method: "POST", body: JSON.stringify(body) }).then(x => x.json());
+  let r;
+  if (backup.via === "bridge") {
+    if (!bridge || (bridgeWin && bridgeWin.closed)) throw new Error("the Drive connection window was closed: click Connect in step 1 again");
+    const id = ++bridgeSeq;
+    r = await new Promise(ok => { bridgeWait.set(id, ok); bridge.win.postMessage({ ctliHub: "call", id, body }, bridge.origin);
+      setTimeout(() => { if (bridgeWait.has(id)) { bridgeWait.delete(id); ok({ ok: false, error: "Google Drive took too long to answer" }); } }, 120000); });
+  } else r = await fetch(backup.url, { method: "POST", body: JSON.stringify(body) }).then(x => x.json());
   if (!r.ok) throw new Error(r.error || "failed"); return r;
 }
 async function backupFile(blob, name, place, sub) {
@@ -889,7 +938,7 @@ function monthLabel(t) {
   return MONTH_NAMES[dt.getUTCMonth()] + " " + dt.getUTCFullYear();
 }
 $("#tsWorkplan").addEventListener("click", async () => {
-  if (!backup) { say("#tsMsg", "Connect the project's Google Drive backup first (step 1): the workplans are updated through it.", true); return; }
+  if (!backup) { say("#tsMsg", "Connect the project's Google Drive first (step 1): the workplans are updated through it. Or send from Google Sheets: in the project's Resource Creation Sheet, PDD tools → Send timesheets to the workplans….", true); return; }
   const [from, to] = period(); const manager = $("#dces").value.trim() || (dev && dev.info && dev.info.dces) || "";
   $("#tsWorkplan").disabled = true; say("#tsMsg", "Sending to the workplans…");
   const out = [];
