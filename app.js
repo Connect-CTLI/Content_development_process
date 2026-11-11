@@ -751,7 +751,7 @@ $("#dlTs").addEventListener("click", async () => {
   try {
     const rows = devRows(); const label = whoLabel(); const person = !$("#devSel").value.startsWith("__"); const I = dev.info || {};
     const [y, m] = ($("#tsMonth").value || new Date().toISOString().slice(0, 7)).split("-").map(Number);
-    const plos = uniq([I.course, ...rows.map(x => x.prog)]);
+    const plos = uniq(rows.map(x => x.prog));   // the PLO only (Resource Creation column B), not the course name
     const wb = await Workbook.load(await t08Buf());
     await Timesheets.fill(wb, { name: person ? label : "", month: MONTH_NAMES[m - 1], year: y, course: [I.unit, I.course].filter(Boolean).join(" · "),
       codes: rows.map(rowCode), plos, claimUrl: ((dev.links || []).find(l => /^PDD Support Claim/i.test(l.what)) || {}).url || "",

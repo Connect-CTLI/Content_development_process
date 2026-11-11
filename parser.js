@@ -110,7 +110,7 @@ async function parseDocx(buf, JSZip, DOMParserImpl) {
   // --- build the model ---
   const model = { preamble: [], course: [], modules: [], references: [], skipped: 0, title: "" };
   const titleBlock = blocks.find(b => b.type === "p" && b.level === 0 && b.text);
-  model.title = titleBlock ? titleBlock.text : coreTitle;
+  model.title = String(titleBlock ? titleBlock.text : coreTitle || "").replace(/^\s*course\s+draft\s*[:\-–]\s*/i, "").trim();
   let section = null, mod = null, topic = null, el = null, modeOutcomes = false, seenHeading = false, endedModules = false;
   const newEl = (title, info, num) => { el = { title, kind: info.kind, code: info.code, tool: info.tool, q: info.q || "None", lines: [], links: [], notes: [], num }; topic.elements.push(el); return el; };
   const ensureTopic = () => { if (!topic) { topic = { title: "Module introduction", num: "", elements: [] }; mod.topics.push(topic); } if (!el) newEl(topic.title, { kind: "Reading page", code: "Text", tool: "Moodle" }, topic.num); };
