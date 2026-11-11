@@ -645,7 +645,16 @@ async function backupPost(body) {
     const id = ++bridgeSeq;
     r = await new Promise(ok => { bridgeWait.set(id, ok); bridge.win.postMessage({ ctliHub: "call", id, body }, bridge.origin);
       setTimeout(() => { if (bridgeWait.has(id)) { bridgeWait.delete(id); ok({ ok: false, error: "Google Drive took too long to answer" }); } }, 120000); });
-  } else r = await fetch(backup.url, { method: "POST", body: JSON.stringify(body) }).then(x => x.json());
+  } else {
+    try { r = await fetch(backup.url, { method: "POST", body: JSON.stringify(body) }).then(x => x.json()); }
+    catch (e) {   // the direct way was refused: switch to the signed-in way and try once more
+      if (body._again) throw e;
+      startBridge(backup.url);
+      const t0 = Date.now(); while (!bridge && Date.now() - t0 < 60000) await new Promise(ok => setTimeout(ok, 500));
+      if (!bridge) throw new Error("Google refused the direct connection. Click Connect in step 1 (and Open the Drive connection if it asks), then send again");
+      return backupPost(Object.assign({}, body, { _again: 1 }));
+    }
+  }
   if (!r.ok) throw new Error(r.error || "failed"); return r;
 }
 async function backupFile(blob, name, place, sub) {
