@@ -951,7 +951,7 @@ function workplanGroups(t, from, to) {
     const it = x.desc || x.code; if (it && !o.items.includes(it)) o.items.push(it); g.set(key, o);
   });
   return [...g.values()].map(o => { let task = (o.plo ? o.plo + ": " : "") + (o.items.join(", ") || "time"); if (task.length > 95) task = task.slice(0, 94) + "…";
-    return { cat: o.cat, minutes: o.minutes, task, start: Timesheets.iso(o.start), end: Timesheets.iso(o.end) }; });
+    return { cat: o.cat, course: o.plo, minutes: o.minutes, task, start: Timesheets.iso(o.start), end: Timesheets.iso(o.end) }; });
 }
 function monthLabel(t) {
   if (/^[A-Za-z]+ \d{4}$/.test(t.month || "")) return t.month;
