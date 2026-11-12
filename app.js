@@ -962,6 +962,7 @@ function monthLabel(t) {
 $("#tsWorkplan").addEventListener("click", async () => {
   if (!backup) { say("#tsMsg", "", true); $("#tsMsg").innerHTML = "Connect the project's Google Drive first: the workplans are updated through it. <button type=\"button\" class=\"secondary\" id=\"toBk\">Go to step 1</button> Or send from Google Sheets: in the project's Resource Creation Sheet, PDD tools → Send timesheets to the workplans…."; const tb = $("#toBk"); if (tb) tb.onclick = () => goStep("#bkLink"); return; }
   const [from, to] = period(); const manager = $("#dces").value.trim() || (dev && dev.info && dev.info.dces) || "";
+  if (!manager) { say("#tsMsg", "", true); $("#tsMsg").innerHTML = "Add the DCES (project lead) in step 1 first: it goes into each workplan row as the manager. <button type=\"button\" class=\"secondary\" id=\"toDces\">Go to step 1</button>"; const tb = $("#toDces"); if (tb) tb.onclick = () => { goStep("#dces"); setTimeout(() => $("#dces").focus(), 300); }; return; }
   $("#tsWorkplan").disabled = true; say("#tsMsg", "Sending to the workplans…");
   const out = [];
   for (const t of tsList) {
