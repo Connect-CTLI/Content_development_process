@@ -24,7 +24,10 @@ document.querySelector(".tabbar").addEventListener("keydown", e => {
   const i = bs.indexOf(document.activeElement); if (i < 0) return; const n = bs[(i + (e.key === "ArrowRight" ? 1 : bs.length - 1)) % bs.length]; n.focus(); showTab(n.dataset.tab);
 });
 document.querySelectorAll("[data-goto]").forEach(b => b.addEventListener("click", () => showTab(b.dataset.goto, true)));
-(() => { let t = "tabA"; try { t = localStorage.getItem("pddHubTab") || t; } catch (e) {} showTab(document.getElementById(t) ? t : "tabA"); })();
+// a link can open a tab directly: …/#draft, …/#sheet or …/#claims (otherwise the tab used last)
+const TAB_HASH = { draft: "tabA", review: "tabA", sheet: "tabB", build: "tabB", claims: "tabC", timesheets: "tabC", developers: "tabC" };
+(() => { let t = "tabA"; try { t = localStorage.getItem("pddHubTab") || t; } catch (e) {} const h = TAB_HASH[location.hash.slice(1).toLowerCase()]; if (h) t = h; showTab(document.getElementById(t) ? t : "tabA"); })();
+window.addEventListener("hashchange", () => { const h = TAB_HASH[location.hash.slice(1).toLowerCase()]; if (h) showTab(h, true); });
 
 // find each Resource Creation column by its heading in row 2, so older and newer sheets both work
 function rcMap(rc) {
@@ -580,6 +583,13 @@ window.addEventListener("message", e => {
   if (d.ctliHub === "ready") {
     clearTimeout(bridgeTimer);
     if (!d.ok) { backup = null; bkSay("The project's Drive folder said no: " + esc(d.error || "not allowed") + "."); return; }
+    if (d.embedded) {   // the Hub opened through Google (…&mode=hub): already connected, nothing to paste
+      if (e.source !== window.parent) return;
+      bridge = { win: e.source, origin: e.origin }; backup = { url: "", project: d.project, folder: d.url, via: "bridge" };
+      $("#bkLink").value = ""; $("#bkLink").placeholder = "Opened through Google: connected"; $("#bkLink").disabled = true; $("#bkCheck").disabled = true;
+      bkSay(`On: every download is also saved in <a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.project)}</a> in Google Drive (opened through Google).`, true);
+      return;
+    }
     bridge = { win: e.source, origin: e.origin };
     backup = { url: pendingUrl, project: d.project, folder: d.url, via: "bridge" };
     try { localStorage.setItem(BK, pendingUrl); } catch (x) {}
@@ -665,7 +675,9 @@ async function backupFile(blob, name, place, sub) {
 }
 $("#bkCheck").addEventListener("click", () => checkBackup($("#bkLink").value));
 $("#bkLink").addEventListener("change", () => checkBackup($("#bkLink").value));
-(() => { let u = ""; try { u = localStorage.getItem(BK) || ""; } catch (e) {} if (u) { $("#bkLink").value = u; checkBackup(u); } })();
+const EMBEDDED = window.parent !== window && /[?&]embed=1/.test(location.search);
+if (EMBEDDED) { bkSay("Connecting through Google…"); const hi = () => { if (!bridge) try { window.parent.postMessage({ ctliHub: "hello" }, "*"); } catch (e) {} }; hi(); setTimeout(hi, 1000); setTimeout(hi, 3000); }
+else (() => { let u = ""; try { u = localStorage.getItem(BK) || ""; } catch (e) {} if (u) { $("#bkLink").value = u; checkBackup(u); } })();
 $("#dlSheet").addEventListener("click", () => filled && save(filled.blob, filled.name.replace(/\.xlsx$/i, "") + ".xlsx", "sheet"));
 $("#dlSnips").addEventListener("click", async () => {
   if (!filled) return; const s = filled.setup; const { p, h } = PAL[s.pal] || {};
@@ -948,7 +960,7 @@ function monthLabel(t) {
   return MONTH_NAMES[dt.getUTCMonth()] + " " + dt.getUTCFullYear();
 }
 $("#tsWorkplan").addEventListener("click", async () => {
-  if (!backup) { say("#tsMsg", "Connect the project's Google Drive first (step 1): the workplans are updated through it. Or send from Google Sheets: in the project's Resource Creation Sheet, PDD tools → Send timesheets to the workplans….", true); return; }
+  if (!backup) { say("#tsMsg", "", true); $("#tsMsg").innerHTML = "Connect the project's Google Drive first: the workplans are updated through it. <button type=\"button\" class=\"secondary\" id=\"toBk\">Go to step 1</button> Or send from Google Sheets: in the project's Resource Creation Sheet, PDD tools → Send timesheets to the workplans…."; const tb = $("#toBk"); if (tb) tb.onclick = () => goStep("#bkLink"); return; }
   const [from, to] = period(); const manager = $("#dces").value.trim() || (dev && dev.info && dev.info.dces) || "";
   $("#tsWorkplan").disabled = true; say("#tsMsg", "Sending to the workplans…");
   const out = [];

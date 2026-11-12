@@ -50,7 +50,7 @@ The Hub has three tabs at the top: **Draft and review** (steps 1–4), **Build t
    - **Their timesheet (T08):** choose the month first. It has their name, their item codes in the dropdown and a My elements tab with the time planned for each element.
 9. **Timesheets and claims:** drop in one or more completed timesheets (T08, or the older content developer timesheet: the Hub finds the columns by their headings). It uses the sheet from step 8 or 7, or drop a different one.
    - Set the claim period, then check the warnings for each developer (rows without a category or date, missing times, overlapping sessions, item codes that are not in the sheet).
-   - **Send to the developers' workplans:** each developer's month goes into their Workplan and Time Schedule, which the PDD Support Claim reads. Needs the project's Drive backup (step 1).
+   - **Send to the developers' workplans:** each developer's month goes into their Workplan and Time Schedule, which the PDD Support Claim reads. Needs the project's Drive connection (step 1); without it, use PDD tools → Send timesheets to the workplans in the project's T06.
    - **Copy the claim lines** if you need them elsewhere, or click a cell to copy one value.
    - **Download the Resource Creation Sheet with the time logged:** the Time Log tab, the Time logged (hh:mm) column (AV) and planned vs logged time on the Project Plan. Adding the same developer's month again replaces their earlier rows.
    - **Download the claim summary (Word)** to keep with the claim.
@@ -141,6 +141,12 @@ The **PDD tools** menu can also make each project's folder in Google Drive, with
 **Workplans and the PDD Support Claim:** set the claim link once in the master T06 (PDD tools → Settings). The PDD Support Claim reads each developer's **Workplan and Time Schedule** (linked in its Support reference tab). In the Hub, step 9 → **Send to the developers' workplans** adds each developer's month under the matching support category (or, in a project's T06, PDD tools → Send timesheets to the workplans). The claim then follows from the workplans as before. Keep the claim link out of this repository, because GitHub Pages is public.
 
 **Hub backup to Google Drive:** in the master T06's Apps Script, Deploy → New deployment → Web app → Execute as: Me, Who has access: Anyone → Deploy. Each new project then gets a **Hub backup link** in Project Links. Paste it in step 1 of the Hub (or add the project's sheet: the Hub finds it), and every download is also saved in the project's folder: learning design review in Phase A, snippets and visual examples in Phase B, developer packs in Phase B / Developer packs, timesheets in Resource Creation Sheet / Timesheets, claim summaries in Resource Creation Sheet / Claims, and filled sheets in Resource Creation Sheet / Hub copies.
+
+- **Make one deployment and keep it.** When the script changes: paste it, then Deploy → Manage deployments → pencil → New version → Deploy. A new deployment gives a new address and the old links stop working. PDD tools → **Hub backup links for the projects** lists every project's current link.
+- **WCED accounts:** WCED keeps web apps to its own signed-in users, even with Who has access: Anyone. The Hub then connects through your sign-in: in the background if the browser allows it, otherwise through **Open the Drive connection**, a small window to keep open while you work. Links with `/a/wced.info/` are tidied by the Hub itself.
+- **Google sign-in:** Apps Script, PDD tools windows and the Drive connection open only for the first signed-in Google account. Use a browser where your WCED account is the only or first account, or a private window with only WCED.
+- **Names:** the Team Member name on a timesheet must match column J of the claim's Support reference tab exactly. Workplan tasks read `PLO code course name: items`, for example `LS Leading Self: Voice over`.
+- **Versions:** the Hub's footer and line 1 of the script show the version. After an upload press Ctrl+Shift+R.
 
 The full step-by-step is in **CTLI_Design_Hub_Google_Drive_Setup.docx** in the template pack.
 
